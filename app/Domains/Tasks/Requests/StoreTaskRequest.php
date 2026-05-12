@@ -1,0 +1,28 @@
+<?php
+
+namespace App\Domains\Tasks\Requests;
+
+use App\Domains\Tasks\Enums\RecurrenceType;
+use App\Domains\Tasks\Enums\TaskPriority;
+use App\Domains\Tasks\Enums\TaskStatus;
+use App\Http\Requests\BaseFormRequest;
+use Illuminate\Validation\Rules\Enum;
+
+class StoreTaskRequest extends BaseFormRequest
+{
+    public function rules(): array
+    {
+        return [
+            'title' => ['required', 'string', 'max:500'],
+            'description' => ['nullable', 'string'],
+            'priority' => ['nullable', new Enum(TaskPriority::class)],
+            'status' => ['nullable', new Enum(TaskStatus::class)],
+            'due_date' => ['nullable', 'date'],
+            'recurrence_type' => ['nullable', new Enum(RecurrenceType::class)],
+            'recurrence_config' => ['nullable', 'array'],
+            'position' => ['nullable', 'integer', 'min:1'],
+            'label_ids' => ['nullable', 'array'],
+            'label_ids.*' => ['uuid', 'exists:task_labels,id'],
+        ];
+    }
+}

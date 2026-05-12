@@ -1,0 +1,87 @@
+<?php
+
+namespace App\Domains\Finance\Services;
+
+use App\Domains\Finance\Actions\CreateTransactionAction;
+use App\Domains\Finance\Actions\UpdateTransactionAction;
+use App\Domains\Finance\DTOs\TransactionDTO;
+use App\Domains\Finance\Models\BankAccount;
+use App\Domains\Finance\Models\Transaction;
+use App\Models\User;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+
+final class TransactionService
+{
+    public function __construct(
+        private readonly CreateTransactionAction $createTransaction,
+        private readonly UpdateTransactionAction $updateTransaction,
+    ) {}
+
+    public function list(User $user, array $filters = []): LengthAwarePaginator
+    {
+        $query = Transaction::forUser($user->id)
+            ->with(['category', 'account', 'card']);
+
+        if (!empty($filters['type'])) {
+            $query->where('type', $filters['type']);
+        }
+
+        if (!empty($filters['account_id'])) {
+            $query->where('account_id', $filters['account_id']);
+        }
+
+        if (!empty($filters['card_id'])) {
+            $query->where('card_id', $filters['card_id']);
+        }
+
+        if (!empty($filters['category_id'])) {
+            $query->where('category_id', $filters['category_id']);
+        }
+
+        if (!empty($filters['start_date'])) {
+            $query->where('transaction_date', '>=', $filters['start_date']);
+        }
+
+        if (!empty($filters['end_date'])) {
+            $query->where('transaction_date', '<=', $filters['end_date']);
+        }
+
+        if (!empty($filters['month']) && !empty($filters['year'])) {
+            $query->inMonth((int) $filters['year'], (int) $filters['month']);
+        }
+
+        if (!empty($filters['search'])) {
+            $query->where('description', 'ilike', "%{$filters['search']}%");
+        }
+
+        $sortBy = $filters['sort_by'] ?? 'transaction_date';
+        $sortDir = $filters['sort_direction'] ?? 'desc';
+        $query->orderBy($sortBy, $sortDir);
+
+        return $query->paginate($filters['per_page'] ?? 20);
+    }
+
+    public function create(User $user, TransactionDTO $dto): mixed
+    {
+        return $this->createTransaction->execute($user, $dto);
+    }
+
+    public function update(Transaction $transaction, TransactionDTO $dto): Transaction
+    {
+        return $this->updateTransaction->execute($transaction, $dto);
+    }
+
+    public function delete(Transaction $transaction): void
+    {
+        if ($transaction->account_id) {
+            $account = BankAccount::find($transaction->account_id);
+            if ($account) {
+                $delta = $transaction->type === \App\Domains\Finance\Enums\TransactionType::Income
+                    ? -$transaction->amount
+                    : $transaction->amount;
+                $account->increment('balance', $delta);
+            }
+        }
+        $transaction->delete();
+    }
+}
