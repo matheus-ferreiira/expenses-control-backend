@@ -32,18 +32,18 @@ class PurchaseItemController extends Controller
         return $this->created(new PurchaseItemResource($item), 'Item created');
     }
 
-    public function update(UpdatePurchaseItemRequest $request, PurchaseItem $purchaseItem): JsonResponse
+    public function update(UpdatePurchaseItemRequest $request, PurchaseItem $purchase): JsonResponse
     {
-        $this->authorizeItem($request, $purchaseItem);
-        $purchaseItem->update($request->validated());
+        $this->authorizeItem($request, $purchase);
+        $purchase->update($request->validated());
 
-        return $this->success(new PurchaseItemResource($purchaseItem), 'Item updated');
+        return $this->success(new PurchaseItemResource($purchase), 'Item updated');
     }
 
-    public function destroy(Request $request, PurchaseItem $purchaseItem): JsonResponse
+    public function destroy(Request $request, PurchaseItem $purchase): JsonResponse
     {
-        $this->authorizeItem($request, $purchaseItem);
-        $purchaseItem->delete();
+        $this->authorizeItem($request, $purchase);
+        $purchase->delete();
 
         return $this->noContent();
     }
