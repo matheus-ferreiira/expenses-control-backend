@@ -11,16 +11,20 @@ class HabitResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'user_id' => $this->user_id,
             'name' => $this->name,
             'description' => $this->description,
-            'frequency_type' => $this->frequency_type?->value,
-            'target_frequency' => $this->target_frequency,
+            // 'frequency' maps to frontend Habit.frequency
+            'frequency' => $this->frequency_type?->value,
+            'target_days' => [],
             'color' => $this->color,
             'icon' => $this->icon,
-            'start_date' => $this->start_date?->toDateString(),
+            'is_active' => $this->archived_at === null,
             'is_archived' => $this->archived_at !== null,
-            'archived_at' => $this->archived_at?->toISOString(),
+            'current_streak' => 0,
+            'longest_streak' => 0,
             'logs' => HabitLogResource::collection($this->whenLoaded('logs')),
+            'start_date' => $this->start_date?->toDateString(),
             'created_at' => $this->created_at->toISOString(),
             'updated_at' => $this->updated_at->toISOString(),
         ];

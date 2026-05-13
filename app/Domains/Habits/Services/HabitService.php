@@ -32,7 +32,9 @@ final class HabitService
             $query->where('name', 'ilike', "%{$filters['search']}%");
         }
 
-        return $query->paginate($filters['per_page'] ?? 20);
+        return $query
+            ->with(['logs' => fn($q) => $q->whereDate('completed_date', today())])
+            ->paginate($filters['per_page'] ?? 20);
     }
 
     public function getTodayHabits(User $user): Collection
