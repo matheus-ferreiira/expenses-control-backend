@@ -9,6 +9,7 @@ use App\Domains\Finance\Controllers\TransactionCategoryController;
 use App\Domains\Finance\Controllers\TransactionController;
 use App\Domains\Goals\Controllers\GoalController;
 use App\Domains\Habits\Controllers\HabitController;
+use App\Domains\Purchases\Controllers\PurchaseItemController;
 use App\Domains\Reports\Controllers\DashboardController;
 use App\Domains\Reports\Controllers\ReportController;
 use App\Domains\Tasks\Controllers\SubtaskController;
@@ -133,5 +134,8 @@ Route::prefix('v1')->group(function () {
         Route::prefix('reports')->group(function () {
             Route::get('weekly-productivity', [ReportController::class, 'weeklyProductivity']);
         });
+
+        // Purchases
+        Route::apiResource('purchases', PurchaseItemController::class)->except(['show']);
     });
 });
