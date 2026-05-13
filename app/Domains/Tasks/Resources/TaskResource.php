@@ -9,17 +9,21 @@ class TaskResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $dueDate = $this->due_date;
+
         return [
             'id' => $this->id,
+            'user_id' => $this->user_id,
             'title' => $this->title,
             'description' => $this->description,
             'priority' => $this->priority?->value,
             'status' => $this->status?->value,
-            'due_date' => $this->due_date?->toISOString(),
+            'due_date' => $dueDate?->toDateString(),
+            'due_time' => $dueDate?->format('H:i'),
             'completed_at' => $this->completed_at?->toISOString(),
-            'recurrence_type' => $this->recurrence_type?->value,
-            'recurrence_config' => $this->recurrence_config,
-            'position' => $this->position,
+            'is_recurring' => $this->recurrence_type?->value !== null && $this->recurrence_type?->value !== 'none',
+            'recurrence_pattern' => $this->recurrence_type?->value !== 'none' ? $this->recurrence_type?->value : null,
+            'order' => $this->position,
             'is_archived' => $this->is_archived,
             'subtasks' => SubtaskResource::collection($this->whenLoaded('subtasks')),
             'labels' => TaskLabelResource::collection($this->whenLoaded('labels')),

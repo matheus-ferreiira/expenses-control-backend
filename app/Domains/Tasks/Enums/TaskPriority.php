@@ -5,7 +5,7 @@ namespace App\Domains\Tasks\Enums;
 enum TaskPriority: string
 {
     case Low = 'low';
-    case Medium = 'medium';
+    case Normal = 'normal';
     case High = 'high';
     case Urgent = 'urgent';
 
@@ -13,7 +13,7 @@ enum TaskPriority: string
     {
         return match($this) {
             self::Low => 1,
-            self::Medium => 2,
+            self::Normal => 2,
             self::High => 3,
             self::Urgent => 4,
         };
