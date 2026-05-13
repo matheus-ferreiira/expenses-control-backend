@@ -1,0 +1,10 @@
+{
+    "recommendations": [
+        "bmewburn.vscode-intelephense-client",
+        "onecentlin.laravel-blade",
+        "shufo.vscode-blade-formatter",
+        "mikestead.dotenv",
+        "editorconfig.editorconfig",
+        "eamodio.gitlens"
+    ]
+}
