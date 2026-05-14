@@ -4,6 +4,7 @@ namespace App\Domains\Finance\Models;
 
 use App\Domains\Finance\Enums\TransactionType;
 use App\Models\User;
+use Database\Factories\TransactionCategoryFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TransactionCategory extends Model
 {
-    use HasUuids, HasFactory;
+    use HasFactory, HasUuids;
 
     protected $fillable = ['user_id', 'name', 'type', 'icon', 'color', 'is_default'];
 
@@ -21,6 +22,11 @@ class TransactionCategory extends Model
         'type' => TransactionType::class,
         'is_default' => 'boolean',
     ];
+
+    protected static function newFactory(): TransactionCategoryFactory
+    {
+        return TransactionCategoryFactory::new();
+    }
 
     public function user(): BelongsTo
     {

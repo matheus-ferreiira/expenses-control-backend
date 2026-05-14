@@ -4,7 +4,7 @@ namespace Tests\Feature\Auth;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class ForgotPasswordTest extends TestCase
@@ -22,6 +22,7 @@ class ForgotPasswordTest extends TestCase
 
     public function test_returns_same_status_for_existing_and_nonexistent_email(): void
     {
+        Notification::fake();
         User::factory()->create(['email' => 'registered@example.com']);
 
         $existing = $this->postJson('/api/v1/auth/forgot-password', [

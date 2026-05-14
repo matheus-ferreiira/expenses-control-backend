@@ -4,6 +4,7 @@ namespace App\Domains\Finance\Models;
 
 use App\Domains\Finance\Enums\AccountType;
 use App\Models\User;
+use Database\Factories\BankAccountFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class BankAccount extends Model
 {
-    use HasUuids, HasFactory, SoftDeletes;
+    use HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
         'user_id',
@@ -32,6 +33,11 @@ class BankAccount extends Model
         'balance' => 'decimal:2',
         'is_active' => 'boolean',
     ];
+
+    protected static function newFactory(): BankAccountFactory
+    {
+        return BankAccountFactory::new();
+    }
 
     public function user(): BelongsTo
     {

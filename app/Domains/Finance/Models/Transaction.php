@@ -4,6 +4,7 @@ namespace App\Domains\Finance\Models;
 
 use App\Domains\Finance\Enums\TransactionType;
 use App\Models\User;
+use Database\Factories\TransactionFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Transaction extends Model
 {
-    use HasUuids, HasFactory, SoftDeletes;
+    use HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
         'user_id',
@@ -41,6 +42,11 @@ class Transaction extends Model
         'installment_number' => 'integer',
         'total_installments' => 'integer',
     ];
+
+    protected static function newFactory(): TransactionFactory
+    {
+        return TransactionFactory::new();
+    }
 
     public function user(): BelongsTo
     {

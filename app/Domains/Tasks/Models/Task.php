@@ -6,6 +6,7 @@ use App\Domains\Tasks\Enums\RecurrenceType;
 use App\Domains\Tasks\Enums\TaskPriority;
 use App\Domains\Tasks\Enums\TaskStatus;
 use App\Models\User;
+use Database\Factories\TaskFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,7 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Task extends Model
 {
-    use HasUuids, HasFactory, SoftDeletes;
+    use HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
         'user_id',
@@ -43,6 +44,11 @@ class Task extends Model
         'is_archived' => 'boolean',
         'position' => 'integer',
     ];
+
+    protected static function newFactory(): TaskFactory
+    {
+        return TaskFactory::new();
+    }
 
     public function user(): BelongsTo
     {
