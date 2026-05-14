@@ -62,7 +62,19 @@ class CalendarEventController extends Controller
     public function update(UpdateCalendarEventRequest $request, CalendarEvent $calendarEvent): JsonResponse
     {
         $this->authorize('update', $calendarEvent);
-        $event = $this->calendarService->update($calendarEvent, CalendarEventDTO::fromArray($request->validated()));
+
+        $data = array_merge([
+            'title' => $calendarEvent->title,
+            'description' => $calendarEvent->description,
+            'location' => $calendarEvent->location,
+            'start_date' => $calendarEvent->start_date,
+            'end_date' => $calendarEvent->end_date,
+            'is_all_day' => $calendarEvent->is_all_day,
+            'color' => $calendarEvent->color,
+            'recurrence_rule' => $calendarEvent->recurrence_rule,
+        ], $request->validated());
+
+        $event = $this->calendarService->update($calendarEvent, CalendarEventDTO::fromArray($data));
 
         return $this->success(new CalendarEventResource($event), 'Event updated');
     }
