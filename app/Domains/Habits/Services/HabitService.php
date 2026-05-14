@@ -28,12 +28,12 @@ final class HabitService
             $query = Habit::forUser($user->id)->archived();
         }
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $query->where('name', 'ilike', "%{$filters['search']}%");
         }
 
         return $query
-            ->with(['logs' => fn($q) => $q->whereDate('completed_date', today())])
+            ->with(['logs' => fn ($q) => $q->whereDate('completed_date', '>=', today()->subDays(89))->orderByDesc('completed_date')])
             ->paginate($filters['per_page'] ?? 20);
     }
 
@@ -41,7 +41,7 @@ final class HabitService
     {
         return Habit::forUser($user->id)
             ->active()
-            ->with(['logs' => fn($q) => $q->whereDate('completed_date', today())])
+            ->with(['logs' => fn ($q) => $q->whereDate('completed_date', '>=', today()->subDays(89))->orderByDesc('completed_date')])
             ->get();
     }
 
@@ -67,6 +67,7 @@ final class HabitService
     public function archive(Habit $habit, bool $archive = true): Habit
     {
         $habit->update(['archived_at' => $archive ? now() : null]);
+
         return $habit;
     }
 
