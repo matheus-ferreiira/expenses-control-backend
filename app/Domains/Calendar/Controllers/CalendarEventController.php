@@ -20,15 +20,15 @@ class CalendarEventController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
         ]);
 
         $events = $this->calendarService->getEventsInRange(
             $request->user(),
-            $request->start_date,
-            $request->end_date
+            $validated['start_date'],
+            $validated['end_date']
         );
 
         return $this->success(CalendarEventResource::collection($events));
