@@ -21,18 +21,21 @@ class GoalController extends Controller
     public function index(Request $request): JsonResponse
     {
         $goals = $this->goalService->list($request->user(), $request->query());
+
         return $this->paginatedSuccess(GoalResource::collection($goals));
     }
 
     public function store(StoreGoalRequest $request): JsonResponse
     {
         $goal = $this->goalService->create($request->user(), GoalDTO::fromArray($request->validated()));
+
         return $this->created(new GoalResource($goal), 'Goal created');
     }
 
     public function show(Request $request, Goal $goal): JsonResponse
     {
         $this->authorize('view', $goal);
+
         return $this->success(new GoalResource($goal));
     }
 
@@ -40,6 +43,7 @@ class GoalController extends Controller
     {
         $this->authorize('update', $goal);
         $goal = $this->goalService->update($goal, GoalDTO::fromArray($request->validated()));
+
         return $this->success(new GoalResource($goal), 'Goal updated');
     }
 
@@ -47,14 +51,16 @@ class GoalController extends Controller
     {
         $this->authorize('delete', $goal);
         $this->goalService->delete($goal);
+
         return $this->noContent();
     }
 
     public function updateProgress(Request $request, Goal $goal): JsonResponse
     {
         $this->authorize('update', $goal);
-        $request->validate(['current_amount' => ['required', 'numeric', 'min:0']]);
-        $goal = $this->goalService->updateProgress($goal, (float) $request->current_amount);
+        $validated = $request->validate(['current_amount' => ['required', 'numeric', 'min:0']]);
+        $goal = $this->goalService->updateProgress($goal, (float) $validated['current_amount']);
+
         return $this->success(new GoalResource($goal), 'Progress updated');
     }
 }
