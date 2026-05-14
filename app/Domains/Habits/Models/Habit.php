@@ -4,6 +4,7 @@ namespace App\Domains\Habits\Models;
 
 use App\Domains\Habits\Enums\FrequencyType;
 use App\Models\User;
+use Database\Factories\HabitFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Habit extends Model
 {
-    use HasUuids, HasFactory, SoftDeletes;
+    use HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
         'user_id',
@@ -34,6 +35,11 @@ class Habit extends Model
         'start_date' => 'date',
         'archived_at' => 'datetime',
     ];
+
+    protected static function newFactory(): HabitFactory
+    {
+        return HabitFactory::new();
+    }
 
     public function user(): BelongsTo
     {
