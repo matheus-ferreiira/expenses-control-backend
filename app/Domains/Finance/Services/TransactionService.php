@@ -59,7 +59,7 @@ final class TransactionService
         $sortBy = in_array($filters['sort_by'] ?? '', $allowedSorts)
             ? $filters['sort_by']
             : 'transaction_date';
-        $sortDir = $filters['sort_direction'] === 'asc' ? 'asc' : 'desc';
+        $sortDir = ($filters['sort_direction'] ?? '') === 'asc' ? 'asc' : 'desc';
         $query->orderBy($sortBy, $sortDir);
 
         return $query->paginate($filters['per_page'] ?? 20);
