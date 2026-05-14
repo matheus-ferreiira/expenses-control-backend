@@ -144,3 +144,77 @@ Todas as rotas autenticadas usam `middleware('auth:sanctum')`.
 3. Registrar Policy em `AppServiceProvider`
 4. Adicionar rotas em `routes/api.php` dentro do grupo `v1 + auth:sanctum`
 5. Criar orchestrator em `.tasks/`
+
+## TDD — Regras para Novas Features
+
+**Toda nova feature de backend DEVE incluir testes de regressão no mesmo sprint/commit.**
+
+### Fluxo obrigatório
+
+1. Implementar a feature (migration, model, action, service, controller, resource)
+2. Criar factory para o novo model em `database/factories/` — padrão:
+   ```php
+   class NewModelFactory extends Factory
+   {
+       protected $model = NewModel::class;
+       public function definition(): array { ... }
+   }
+   ```
+3. Adicionar `protected static function newFactory(): NewModelFactory` no model (necessário para DDD — Laravel não encontra factories em `app/Domains/*/Models/` automaticamente)
+4. Criar `tests/Feature/{Domain}/NewModelTest.php` cobrindo:
+   - Happy path (CRUD básico funciona)
+   - User isolation (usuário só vê seus próprios dados)
+   - Authorization (usuário não acessa dados de outro — assertForbidden 403)
+   - Validação de input (campos inválidos → assertUnprocessable 422)
+   - Qualquer lógica de negócio crítica da feature
+5. Rodar os testes antes do commit: `php artisan test --filter=NewModelTest`
+
+### Estrutura dos testes
+
+```php
+namespace Tests\Feature\{Domain};
+
+use App\Domains\{Domain}\Models\{Model};
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class {Model}Test extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_user_can_create_{model}(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/{endpoint}', [...])
+            ->assertCreated();
+    }
+
+    public function test_user_cannot_access_another_users_{model}(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+        $model = {Model}::factory()->create(['user_id' => $other->id]);
+        $this->actingAs($user, 'sanctum')
+            ->getJson("/api/v1/{endpoint}/{$model->id}")
+            ->assertForbidden();
+    }
+}
+```
+
+### Cobertura mínima por feature
+
+| Cenário | Assertion esperada |
+|---------|-------------------|
+| Criar recurso | `assertCreated()` + `assertDatabaseHas` |
+| Listar recursos (isolação) | `meta.total` correto |
+| Acessar recurso alheio | `assertForbidden()` (403) |
+| Input inválido | `assertUnprocessable()` (422) |
+| Lógica crítica de negócio | assertar o estado no banco |
+
+### Banco de teste
+
+- Conexão: MySQL `productivy_test` (configurado em `phpunit.xml`)
+- Usar `RefreshDatabase` em todos os tests de feature
+- Nunca usar SQLite (driver não disponível neste ambiente)
