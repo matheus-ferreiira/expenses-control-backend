@@ -3,6 +3,7 @@
 namespace App\Domains\Notes\Models;
 
 use App\Models\User;
+use Database\Factories\NoteFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -31,6 +32,11 @@ class Note extends Model
         'archived_at' => 'datetime',
         'last_viewed_at' => 'datetime',
     ];
+
+    protected static function newFactory(): NoteFactory
+    {
+        return NoteFactory::new();
+    }
 
     public function user(): BelongsTo
     {

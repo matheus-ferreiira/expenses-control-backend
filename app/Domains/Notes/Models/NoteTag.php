@@ -3,6 +3,7 @@
 namespace App\Domains\Notes\Models;
 
 use App\Models\User;
+use Database\Factories\NoteTagFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -20,6 +21,11 @@ class NoteTag extends Model
         'name',
         'color',
     ];
+
+    protected static function newFactory(): NoteTagFactory
+    {
+        return NoteTagFactory::new();
+    }
 
     public function user(): BelongsTo
     {
