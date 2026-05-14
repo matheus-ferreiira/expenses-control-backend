@@ -3,7 +3,6 @@
 namespace App\Domains\Habits\Services;
 
 use App\Domains\Habits\Models\Habit;
-use Carbon\Carbon;
 
 final class HabitStatsService
 {
@@ -47,20 +46,20 @@ final class HabitStatsService
     {
         $startDate = today()->subDays($days - 1);
 
-        $logs = $habit->logs()
+        $logCounts = $habit->logs()
             ->where('completed_date', '>=', $startDate)
+            ->get(['completed_date'])
             ->pluck('completed_date')
-            ->map(fn($date) => $date->toDateString())
-            ->flip()
-            ->map(fn() => true)
+            ->map(fn ($date) => $date->toDateString())
+            ->countBy()
             ->toArray();
 
-        $heatmap = [];
+        $result = [];
         for ($i = 0; $i < $days; $i++) {
             $date = $startDate->copy()->addDays($i)->toDateString();
-            $heatmap[$date] = isset($logs[$date]);
+            $result[] = ['date' => $date, 'count' => $logCounts[$date] ?? 0];
         }
 
-        return $heatmap;
+        return $result;
     }
 }
