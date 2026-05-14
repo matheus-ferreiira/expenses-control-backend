@@ -40,11 +40,14 @@ final class CalendarService
         $event->update([
             'title' => $dto->title,
             'description' => $dto->description,
+            'location' => $dto->location,
             'start_date' => $dto->startDate,
             'end_date' => $dto->endDate,
             'is_all_day' => $dto->isAllDay,
             'color' => $dto->color,
+            'recurrence_rule' => $dto->recurrenceRule,
         ]);
+
         return $event;
     }
 

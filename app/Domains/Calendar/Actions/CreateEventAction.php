@@ -14,12 +14,14 @@ final class CreateEventAction
             'user_id' => $user->id,
             'title' => $dto->title,
             'description' => $dto->description,
+            'location' => $dto->location,
             'start_date' => $dto->startDate,
             'end_date' => $dto->endDate,
             'is_all_day' => $dto->isAllDay,
             'color' => $dto->color,
             'source' => $dto->source,
             'external_id' => $dto->externalId,
+            'recurrence_rule' => $dto->recurrenceRule,
         ]);
     }
 }

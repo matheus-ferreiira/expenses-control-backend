@@ -11,10 +11,12 @@ final readonly class CalendarEventDTO
         public string $startDate,
         public string $endDate,
         public ?string $description = null,
+        public ?string $location = null,
         public bool $isAllDay = false,
         public ?string $color = null,
         public EventSource $source = EventSource::Manual,
         public ?string $externalId = null,
+        public ?string $recurrenceRule = null,
     ) {}
 
     public static function fromArray(array $data): self
@@ -24,10 +26,12 @@ final readonly class CalendarEventDTO
             startDate: $data['start_date'],
             endDate: $data['end_date'],
             description: $data['description'] ?? null,
+            location: $data['location'] ?? null,
             isAllDay: (bool) ($data['is_all_day'] ?? false),
             color: $data['color'] ?? null,
             source: EventSource::from($data['source'] ?? EventSource::Manual->value),
             externalId: $data['external_id'] ?? null,
+            recurrenceRule: $data['recurrence_rule'] ?? null,
         );
     }
 }

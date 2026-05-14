@@ -13,18 +13,20 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class CalendarEvent extends Model
 {
-    use HasUuids, HasFactory, SoftDeletes;
+    use HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
         'user_id',
         'title',
         'description',
+        'location',
         'start_date',
         'end_date',
         'is_all_day',
         'color',
         'source',
         'external_id',
+        'recurrence_rule',
         'metadata',
     ];
 

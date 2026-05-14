@@ -38,6 +38,7 @@ class CalendarEventController extends Controller
     {
         $days = (int) $request->query('days', 7);
         $events = $this->calendarService->getUpcomingEvents($request->user(), $days);
+
         return $this->success(CalendarEventResource::collection($events));
     }
 
@@ -47,12 +48,14 @@ class CalendarEventController extends Controller
             $request->user(),
             CalendarEventDTO::fromArray($request->validated())
         );
+
         return $this->created(new CalendarEventResource($event), 'Event created');
     }
 
     public function show(Request $request, CalendarEvent $calendarEvent): JsonResponse
     {
         $this->authorize('view', $calendarEvent);
+
         return $this->success(new CalendarEventResource($calendarEvent));
     }
 
@@ -60,6 +63,7 @@ class CalendarEventController extends Controller
     {
         $this->authorize('update', $calendarEvent);
         $event = $this->calendarService->update($calendarEvent, CalendarEventDTO::fromArray($request->validated()));
+
         return $this->success(new CalendarEventResource($event), 'Event updated');
     }
 
@@ -67,6 +71,7 @@ class CalendarEventController extends Controller
     {
         $this->authorize('delete', $calendarEvent);
         $this->calendarService->delete($calendarEvent);
+
         return $this->noContent();
     }
 }
