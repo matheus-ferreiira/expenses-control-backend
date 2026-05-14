@@ -12,6 +12,10 @@ use App\Domains\Goals\Models\Goal;
 use App\Domains\Goals\Policies\GoalPolicy;
 use App\Domains\Habits\Models\Habit;
 use App\Domains\Habits\Policies\HabitPolicy;
+use App\Domains\Notes\Models\Note;
+use App\Domains\Notes\Models\NoteTag;
+use App\Domains\Notes\Policies\NotePolicy;
+use App\Domains\Notes\Policies\NoteTagPolicy;
 use App\Domains\Tasks\Models\Task;
 use App\Domains\Tasks\Policies\TaskPolicy;
 use Illuminate\Support\Facades\Gate;
@@ -29,5 +33,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Transaction::class, TransactionPolicy::class);
         Gate::policy(Goal::class, GoalPolicy::class);
         Gate::policy(CalendarEvent::class, CalendarEventPolicy::class);
+        Gate::policy(Note::class, NotePolicy::class);
+        Gate::policy(NoteTag::class, NoteTagPolicy::class);
     }
 }

@@ -9,6 +9,8 @@ use App\Domains\Finance\Controllers\TransactionCategoryController;
 use App\Domains\Finance\Controllers\TransactionController;
 use App\Domains\Goals\Controllers\GoalController;
 use App\Domains\Habits\Controllers\HabitController;
+use App\Domains\Notes\Controllers\NoteController;
+use App\Domains\Notes\Controllers\NoteTagController;
 use App\Domains\Purchases\Controllers\PurchaseItemController;
 use App\Domains\Reports\Controllers\DashboardController;
 use App\Domains\Reports\Controllers\ReportController;
@@ -133,6 +135,27 @@ Route::prefix('v1')->group(function () {
         // Reports
         Route::prefix('reports')->group(function () {
             Route::get('weekly-productivity', [ReportController::class, 'weeklyProductivity']);
+        });
+
+        // Notes
+        Route::prefix('notes')->group(function () {
+            Route::get('/', [NoteController::class, 'index']);
+            Route::post('/', [NoteController::class, 'store']);
+            Route::get('{note}', [NoteController::class, 'show']);
+            Route::patch('{note}', [NoteController::class, 'update']);
+            Route::delete('{note}', [NoteController::class, 'destroy']);
+            Route::patch('{note}/pin', [NoteController::class, 'pin']);
+            Route::patch('{note}/favorite', [NoteController::class, 'favorite']);
+            Route::patch('{note}/archive', [NoteController::class, 'archive']);
+            Route::patch('{note}/unarchive', [NoteController::class, 'unarchive']);
+        });
+
+        // Note Tags
+        Route::prefix('note-tags')->group(function () {
+            Route::get('/', [NoteTagController::class, 'index']);
+            Route::post('/', [NoteTagController::class, 'store']);
+            Route::put('{noteTag}', [NoteTagController::class, 'update']);
+            Route::delete('{noteTag}', [NoteTagController::class, 'destroy']);
         });
 
         // Purchases
