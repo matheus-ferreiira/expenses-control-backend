@@ -11,7 +11,7 @@ final readonly class TaskDTO
     public function __construct(
         public string $title,
         public ?string $description = null,
-        public TaskPriority $priority = TaskPriority::Medium,
+        public TaskPriority $priority = TaskPriority::Normal,
         public TaskStatus $status = TaskStatus::Pending,
         public ?string $dueDate = null,
         public RecurrenceType $recurrenceType = RecurrenceType::None,
@@ -25,7 +25,7 @@ final readonly class TaskDTO
         return new self(
             title: $data['title'],
             description: $data['description'] ?? null,
-            priority: TaskPriority::from($data['priority'] ?? TaskPriority::Medium->value),
+            priority: TaskPriority::from($data['priority'] ?? TaskPriority::Normal->value),
             status: TaskStatus::from($data['status'] ?? TaskStatus::Pending->value),
             dueDate: $data['due_date'] ?? null,
             recurrenceType: RecurrenceType::from($data['recurrence_type'] ?? RecurrenceType::None->value),
