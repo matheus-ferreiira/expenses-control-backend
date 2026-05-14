@@ -52,12 +52,14 @@ class AuthController extends Controller
     public function logout(Request $request): JsonResponse
     {
         $this->authService->logout($request->user());
+
         return $this->success(message: 'Logged out successfully');
     }
 
     public function logoutAll(Request $request): JsonResponse
     {
         $this->authService->logoutFromAllDevices($request->user());
+
         return $this->success(message: 'Logged out from all devices');
     }
 
@@ -68,19 +70,19 @@ class AuthController extends Controller
 
     public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
     {
-        $sent = $this->authService->sendPasswordResetLink($request->email);
+        $this->authService->sendPasswordResetLink($request->validated('email'));
 
-        return $sent
-            ? $this->success(message: 'Password reset link sent to your email')
-            : $this->error('Unable to send reset link', 400);
+        return $this->success(message: 'If that email is registered, a reset link has been sent');
     }
 
     public function resetPassword(ResetPasswordRequest $request): JsonResponse
     {
+        $validated = $request->validated();
+
         $reset = $this->authService->resetPassword(
-            $request->token,
-            $request->email,
-            $request->password,
+            $validated['token'],
+            $validated['email'],
+            $validated['password'],
         );
 
         return $reset
