@@ -22,7 +22,7 @@ class TransactionFilterRequest extends BaseFormRequest
             'search' => ['nullable', 'string', 'max:255'],
             'sort_by' => ['nullable', 'in:transaction_date,amount,description,created_at'],
             'sort_direction' => ['nullable', 'in:asc,desc'],
-            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:500'],
         ];
     }
 }
