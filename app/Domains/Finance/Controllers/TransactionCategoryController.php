@@ -13,6 +13,7 @@ class TransactionCategoryController extends Controller
     public function index(Request $request): JsonResponse
     {
         $categories = TransactionCategory::forUser($request->user()->id)->get();
+
         return $this->success(TransactionCategoryResource::collection($categories));
     }
 
@@ -26,6 +27,7 @@ class TransactionCategoryController extends Controller
         ]);
 
         $category = TransactionCategory::create([...$data, 'user_id' => $request->user()->id]);
+
         return $this->created(new TransactionCategoryResource($category));
     }
 
@@ -40,6 +42,7 @@ class TransactionCategoryController extends Controller
         ]);
 
         $transactionCategory->update($data);
+
         return $this->success(new TransactionCategoryResource($transactionCategory));
     }
 
@@ -47,6 +50,7 @@ class TransactionCategoryController extends Controller
     {
         abort_unless($transactionCategory->user_id === $request->user()->id, 403);
         $transactionCategory->delete();
+
         return $this->noContent();
     }
 }

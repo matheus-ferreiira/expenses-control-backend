@@ -21,18 +21,21 @@ class BankAccountController extends Controller
     public function index(Request $request): JsonResponse
     {
         $accounts = $this->service->list($request->user());
+
         return $this->success(BankAccountResource::collection($accounts));
     }
 
     public function store(StoreBankAccountRequest $request): JsonResponse
     {
         $account = $this->service->create($request->user(), BankAccountDTO::fromArray($request->validated()));
+
         return $this->created(new BankAccountResource($account), 'Account created');
     }
 
     public function show(Request $request, BankAccount $bankAccount): JsonResponse
     {
         $this->authorize('view', $bankAccount);
+
         return $this->success(new BankAccountResource($bankAccount->load('creditCards')));
     }
 
@@ -40,6 +43,7 @@ class BankAccountController extends Controller
     {
         $this->authorize('update', $bankAccount);
         $account = $this->service->update($bankAccount, BankAccountDTO::fromArray($request->validated()));
+
         return $this->success(new BankAccountResource($account), 'Account updated');
     }
 
@@ -47,6 +51,7 @@ class BankAccountController extends Controller
     {
         $this->authorize('delete', $bankAccount);
         $this->service->delete($bankAccount);
+
         return $this->noContent();
     }
 

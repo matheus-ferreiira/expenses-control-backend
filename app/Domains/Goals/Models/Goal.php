@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Goal extends Model
 {
-    use HasUuids, HasFactory, SoftDeletes;
+    use HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
         'user_id',
@@ -54,9 +54,10 @@ class Goal extends Model
 
     public function getProgressPercentageAttribute(): float
     {
-        if (!$this->target_amount || $this->target_amount == 0) {
+        if (! $this->target_amount || $this->target_amount == 0) {
             return 0;
         }
+
         return min(round(($this->current_amount / $this->target_amount) * 100, 1), 100);
     }
 }

@@ -14,7 +14,7 @@ final class LoginAction
      */
     public function execute(LoginDTO $dto): array
     {
-        if (!Auth::attempt(['email' => $dto->email, 'password' => $dto->password], $dto->remember)) {
+        if (! Auth::attempt(['email' => $dto->email, 'password' => $dto->password], $dto->remember)) {
             throw new AuthenticationException('Invalid credentials.');
         }
 

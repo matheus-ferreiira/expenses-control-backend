@@ -11,7 +11,7 @@ enum TaskPriority: string
 
     public function numericValue(): int
     {
-        return match($this) {
+        return match ($this) {
             self::Low => 1,
             self::Normal => 2,
             self::High => 3,

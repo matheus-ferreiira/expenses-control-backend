@@ -18,6 +18,7 @@ class TaskLabelController extends Controller
     public function index(Request $request): JsonResponse
     {
         $labels = $this->taskService->listLabels($request->user());
+
         return $this->success(TaskLabelResource::collection($labels));
     }
 
@@ -29,6 +30,7 @@ class TaskLabelController extends Controller
         ]);
 
         $label = $this->taskService->createLabel($request->user(), $data);
+
         return $this->created(new TaskLabelResource($label), 'Label created');
     }
 
@@ -42,6 +44,7 @@ class TaskLabelController extends Controller
         ]);
 
         $label = $this->taskService->updateLabel($taskLabel, $data);
+
         return $this->success(new TaskLabelResource($label), 'Label updated');
     }
 
@@ -49,6 +52,7 @@ class TaskLabelController extends Controller
     {
         abort_unless($taskLabel->user_id === $request->user()->id, 403);
         $this->taskService->deleteLabel($taskLabel);
+
         return $this->noContent();
     }
 }

@@ -21,6 +21,7 @@ class CreditCardController extends Controller
     public function index(Request $request): JsonResponse
     {
         $cards = CreditCard::forUser($request->user()->id)->with('bankAccount')->get();
+
         return $this->success(CreditCardResource::collection($cards));
     }
 
@@ -28,12 +29,14 @@ class CreditCardController extends Controller
     {
         abort_unless($bankAccount->user_id === $request->user()->id, 403);
         $card = $this->service->createCreditCard($bankAccount, $request->validated());
+
         return $this->created(new CreditCardResource($card));
     }
 
     public function show(Request $request, CreditCard $creditCard): JsonResponse
     {
         abort_unless($creditCard->user_id === $request->user()->id, 403);
+
         return $this->success(new CreditCardResource($creditCard));
     }
 
@@ -41,6 +44,7 @@ class CreditCardController extends Controller
     {
         abort_unless($creditCard->user_id === $request->user()->id, 403);
         $card = $this->service->updateCreditCard($creditCard, $request->validated());
+
         return $this->success(new CreditCardResource($card), 'Card updated');
     }
 
@@ -48,6 +52,7 @@ class CreditCardController extends Controller
     {
         abort_unless($creditCard->user_id === $request->user()->id, 403);
         $this->service->deleteCreditCard($creditCard);
+
         return $this->noContent();
     }
 }

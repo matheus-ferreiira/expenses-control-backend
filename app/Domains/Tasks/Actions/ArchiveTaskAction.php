@@ -9,6 +9,7 @@ final class ArchiveTaskAction
     public function execute(Task $task, bool $archive = true): Task
     {
         $task->update(['is_archived' => $archive]);
+
         return $task;
     }
 }

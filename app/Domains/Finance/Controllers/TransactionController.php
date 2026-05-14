@@ -22,6 +22,7 @@ class TransactionController extends Controller
     public function index(TransactionFilterRequest $request): JsonResponse
     {
         $transactions = $this->service->list($request->user(), $request->validated());
+
         return $this->paginatedSuccess(TransactionResource::collection($transactions));
     }
 
@@ -39,6 +40,7 @@ class TransactionController extends Controller
     public function show(Request $request, Transaction $transaction): JsonResponse
     {
         $this->authorize('view', $transaction);
+
         return $this->success(new TransactionResource($transaction->load(['category', 'account', 'card'])));
     }
 
@@ -46,6 +48,7 @@ class TransactionController extends Controller
     {
         $this->authorize('update', $transaction);
         $transaction = $this->service->update($transaction, TransactionDTO::fromArray($request->validated()));
+
         return $this->success(new TransactionResource($transaction), 'Transaction updated');
     }
 
@@ -53,6 +56,7 @@ class TransactionController extends Controller
     {
         $this->authorize('delete', $transaction);
         $this->service->delete($transaction);
+
         return $this->noContent();
     }
 }

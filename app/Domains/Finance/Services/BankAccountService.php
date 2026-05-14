@@ -38,6 +38,7 @@ final class BankAccountService
             'color' => $dto->color,
             'is_active' => $dto->isActive,
         ]);
+
         return $account;
     }
 
@@ -51,12 +52,12 @@ final class BankAccountService
         $accounts = BankAccount::forUser($user->id)->active()->get();
 
         $totalBalance = $accounts->sum('balance');
-        $byCurrency = $accounts->groupBy('currency')->map(fn($group) => $group->sum('balance'));
+        $byCurrency = $accounts->groupBy('currency')->map(fn ($group) => $group->sum('balance'));
 
         return [
             'total' => $totalBalance,
             'by_currency' => $byCurrency,
-            'accounts' => $accounts->map(fn($a) => ['id' => $a->id, 'name' => $a->name, 'balance' => $a->balance]),
+            'accounts' => $accounts->map(fn ($a) => ['id' => $a->id, 'name' => $a->name, 'balance' => $a->balance]),
         ];
     }
 
@@ -71,6 +72,7 @@ final class BankAccountService
     public function updateCreditCard(CreditCard $card, array $data): CreditCard
     {
         $card->update($data);
+
         return $card;
     }
 

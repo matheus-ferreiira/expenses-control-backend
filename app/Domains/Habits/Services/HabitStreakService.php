@@ -3,8 +3,6 @@
 namespace App\Domains\Habits\Services;
 
 use App\Domains\Habits\Models\Habit;
-use Carbon\Carbon;
-use Illuminate\Support\Collection;
 
 final class HabitStreakService
 {
@@ -24,7 +22,7 @@ final class HabitStreakService
             ? $logs->first()
             : null;
 
-        if (!$checkDate) {
+        if (! $checkDate) {
             return 0;
         }
 

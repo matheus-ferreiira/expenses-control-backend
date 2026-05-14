@@ -22,6 +22,7 @@ class TaskController extends Controller
     public function index(TaskFilterRequest $request): JsonResponse
     {
         $tasks = $this->taskService->list($request->user(), $request->validated());
+
         return $this->paginatedSuccess(TaskResource::collection($tasks));
     }
 
@@ -31,12 +32,14 @@ class TaskController extends Controller
             $request->user(),
             TaskDTO::fromArray($request->validated())
         );
+
         return $this->created(new TaskResource($task), 'Task created');
     }
 
     public function show(Request $request, Task $task): JsonResponse
     {
         $this->authorize('view', $task);
+
         return $this->success(new TaskResource($task->load(['labels', 'subtasks'])));
     }
 
@@ -44,6 +47,7 @@ class TaskController extends Controller
     {
         $this->authorize('update', $task);
         $task = $this->taskService->update($task, TaskDTO::fromArray($request->validated()));
+
         return $this->success(new TaskResource($task), 'Task updated');
     }
 
@@ -51,6 +55,7 @@ class TaskController extends Controller
     {
         $this->authorize('delete', $task);
         $this->taskService->delete($task);
+
         return $this->noContent();
     }
 
@@ -58,6 +63,7 @@ class TaskController extends Controller
     {
         $this->authorize('update', $task);
         $task = $this->taskService->complete($task);
+
         return $this->success(new TaskResource($task), 'Task completed');
     }
 
@@ -65,6 +71,7 @@ class TaskController extends Controller
     {
         $this->authorize('update', $task);
         $task = $this->taskService->archive($task, true);
+
         return $this->success(new TaskResource($task), 'Task archived');
     }
 
@@ -72,6 +79,7 @@ class TaskController extends Controller
     {
         $this->authorize('update', $task);
         $task = $this->taskService->archive($task, false);
+
         return $this->success(new TaskResource($task), 'Task unarchived');
     }
 
@@ -79,6 +87,7 @@ class TaskController extends Controller
     {
         $request->validate(['ids' => ['required', 'array'], 'ids.*' => ['uuid']]);
         $this->taskService->reorder($request->user(), $request->ids);
+
         return $this->success(message: 'Tasks reordered');
     }
 }

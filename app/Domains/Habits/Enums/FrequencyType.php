@@ -11,7 +11,7 @@ enum FrequencyType: string
 
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::Daily => 'Daily',
             self::Weekly => 'Weekly',
             self::Monthly => 'Monthly',

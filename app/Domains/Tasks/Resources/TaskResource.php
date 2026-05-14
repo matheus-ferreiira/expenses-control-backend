@@ -27,8 +27,8 @@ class TaskResource extends JsonResource
             'is_archived' => $this->is_archived,
             'subtasks' => SubtaskResource::collection($this->whenLoaded('subtasks')),
             'labels' => TaskLabelResource::collection($this->whenLoaded('labels')),
-            'subtasks_count' => $this->subtasks_count ?? $this->whenLoaded('subtasks', fn() => $this->subtasks->count()),
-            'completed_subtasks_count' => $this->whenLoaded('subtasks', fn() => $this->subtasks->where('completed', true)->count()),
+            'subtasks_count' => $this->subtasks_count ?? $this->whenLoaded('subtasks', fn () => $this->subtasks->count()),
+            'completed_subtasks_count' => $this->whenLoaded('subtasks', fn () => $this->subtasks->where('completed', true)->count()),
             'created_at' => $this->created_at->toISOString(),
             'updated_at' => $this->updated_at->toISOString(),
         ];

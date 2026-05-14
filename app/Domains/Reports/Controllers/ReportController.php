@@ -4,7 +4,6 @@ namespace App\Domains\Reports\Controllers;
 
 use App\Domains\Habits\Models\Habit;
 use App\Domains\Habits\Services\HabitStatsService;
-use App\Domains\Habits\Services\HabitStreakService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

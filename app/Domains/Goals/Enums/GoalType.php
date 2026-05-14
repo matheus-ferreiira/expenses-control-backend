@@ -13,7 +13,7 @@ enum GoalType: string
 
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::Financial => 'Financial',
             self::Habit => 'Habit',
             self::Productivity => 'Productivity',

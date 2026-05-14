@@ -46,6 +46,7 @@ final class AuthService
     public function sendPasswordResetLink(string $email): bool
     {
         $status = Password::sendResetLink(['email' => $email]);
+
         return $status === Password::RESET_LINK_SENT;
     }
 

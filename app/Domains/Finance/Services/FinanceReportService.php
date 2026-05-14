@@ -5,7 +5,6 @@ namespace App\Domains\Finance\Services;
 use App\Domains\Finance\Enums\TransactionType;
 use App\Domains\Finance\Models\Transaction;
 use App\Models\User;
-use Carbon\Carbon;
 
 final class FinanceReportService
 {
@@ -24,6 +23,7 @@ final class FinanceReportService
             ->groupBy('category_id')
             ->map(function ($group) {
                 $first = $group->first();
+
                 return [
                     'category' => $first->category?->name ?? 'Uncategorized',
                     'color' => $first->category?->color ?? '#888',
@@ -37,6 +37,7 @@ final class FinanceReportService
         if ($expenses > 0) {
             $expensesByCategory = $expensesByCategory->map(function ($item) use ($expenses) {
                 $item['percentage'] = round(($item['total'] / $expenses) * 100, 1);
+
                 return $item;
             });
         }
@@ -75,7 +76,7 @@ final class FinanceReportService
             ->orderBy('transaction_date')
             ->get();
 
-        $byDate = $transactions->groupBy(fn($t) => $t->transaction_date->toDateString())
+        $byDate = $transactions->groupBy(fn ($t) => $t->transaction_date->toDateString())
             ->map(function ($group) {
                 return [
                     'income' => (float) $group->where('type', TransactionType::Income->value)->sum('amount'),

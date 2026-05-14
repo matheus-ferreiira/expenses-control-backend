@@ -2,13 +2,13 @@
 
 namespace App\Domains\Reports\Services;
 
+use App\Domains\Calendar\Models\CalendarEvent;
 use App\Domains\Finance\Enums\TransactionType;
 use App\Domains\Finance\Models\BankAccount;
 use App\Domains\Finance\Models\Transaction;
 use App\Domains\Goals\Models\Goal;
 use App\Domains\Habits\Models\Habit;
 use App\Domains\Tasks\Models\Task;
-use App\Domains\Calendar\Models\CalendarEvent;
 use App\Models\User;
 use Carbon\Carbon;
 
@@ -44,10 +44,10 @@ final class DashboardService
     private function getHabitsSummary(User $user, Carbon $today): array
     {
         $habits = Habit::forUser($user->id)->active()
-            ->with(['logs' => fn($q) => $q->whereDate('completed_date', $today)])
+            ->with(['logs' => fn ($q) => $q->whereDate('completed_date', $today)])
             ->get();
 
-        $completedToday = $habits->filter(fn($h) => $h->logs->isNotEmpty())->count();
+        $completedToday = $habits->filter(fn ($h) => $h->logs->isNotEmpty())->count();
 
         return [
             'total' => $habits->count(),
@@ -87,7 +87,7 @@ final class DashboardService
         return [
             'active_count' => $goals->count(),
             'near_deadline' => $goals->filter(
-                fn($g) => $g->target_date && $g->target_date->diffInDays(now()) <= 30
+                fn ($g) => $g->target_date && $g->target_date->diffInDays(now()) <= 30
             )->count(),
             'recent' => $goals->sortBy('target_date')->take(3)->values(),
         ];
