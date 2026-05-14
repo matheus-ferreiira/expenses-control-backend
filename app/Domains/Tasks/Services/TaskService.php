@@ -12,6 +12,7 @@ use App\Domains\Tasks\Models\Task;
 use App\Domains\Tasks\Models\TaskLabel;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Collection;
 
 final class TaskService
 {
@@ -29,23 +30,23 @@ final class TaskService
             ->with(['labels', 'subtasks'])
             ->notArchived();
 
-        if (!empty($filters['status'])) {
+        if (! empty($filters['status'])) {
             $query->where('status', $filters['status']);
         }
 
-        if (!empty($filters['priority'])) {
+        if (! empty($filters['priority'])) {
             $query->where('priority', $filters['priority']);
         }
 
-        if (!empty($filters['label_id'])) {
-            $query->whereHas('labels', fn($q) => $q->where('task_labels.id', $filters['label_id']));
+        if (! empty($filters['label_id'])) {
+            $query->whereHas('labels', fn ($q) => $q->where('task_labels.id', $filters['label_id']));
         }
 
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $query->where('title', 'ilike', "%{$filters['search']}%");
         }
 
-        if (!empty($filters['due_date'])) {
+        if (! empty($filters['due_date'])) {
             $query->whereDate('due_date', $filters['due_date']);
         }
 
@@ -53,8 +54,11 @@ final class TaskService
             $query->withoutGlobalScope('notArchived')->where('is_archived', true);
         }
 
-        $sortBy = $filters['sort_by'] ?? 'position';
-        $sortDir = $filters['sort_direction'] ?? 'asc';
+        $allowedSorts = ['position', 'created_at', 'due_date', 'priority', 'title', 'status'];
+        $sortBy = in_array($filters['sort_by'] ?? null, $allowedSorts, true)
+            ? $filters['sort_by']
+            : 'position';
+        $sortDir = strtolower($filters['sort_direction'] ?? 'asc') === 'desc' ? 'desc' : 'asc';
         $query->orderBy($sortBy, $sortDir);
 
         return $query->paginate($filters['per_page'] ?? 15);
@@ -90,7 +94,7 @@ final class TaskService
         $this->reorderTasks->execute($user, $orderedIds);
     }
 
-    public function listLabels(User $user): \Illuminate\Database\Eloquent\Collection
+    public function listLabels(User $user): Collection
     {
         return TaskLabel::forUser($user->id)->get();
     }
@@ -103,6 +107,7 @@ final class TaskService
     public function updateLabel(TaskLabel $label, array $data): TaskLabel
     {
         $label->update($data);
+
         return $label;
     }
 
