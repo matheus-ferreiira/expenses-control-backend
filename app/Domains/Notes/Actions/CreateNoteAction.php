@@ -4,6 +4,7 @@ namespace App\Domains\Notes\Actions;
 
 use App\Domains\Notes\DTOs\NoteDTO;
 use App\Domains\Notes\Models\Note;
+use App\Domains\Notes\Models\NoteTag;
 use App\Models\User;
 
 final class CreateNoteAction
@@ -19,7 +20,11 @@ final class CreateNoteAction
         ]);
 
         if (! empty($dto->tagIds)) {
-            $note->tags()->sync($dto->tagIds);
+            $ownedTagIds = NoteTag::where('user_id', $user->id)
+                ->whereIn('id', $dto->tagIds)
+                ->pluck('id')
+                ->all();
+            $note->tags()->sync($ownedTagIds);
         }
 
         return $note->load('tags');

@@ -4,6 +4,7 @@ namespace App\Domains\Notes\Controllers;
 
 use App\Domains\Notes\Models\NoteTag;
 use App\Domains\Notes\Requests\StoreNoteTagRequest;
+use App\Domains\Notes\Requests\UpdateNoteTagRequest;
 use App\Domains\Notes\Resources\NoteTagResource;
 use App\Domains\Notes\Services\NoteService;
 use App\Http\Controllers\Controller;
@@ -30,7 +31,7 @@ class NoteTagController extends Controller
         return $this->created(new NoteTagResource($tag), 'Tag created');
     }
 
-    public function update(StoreNoteTagRequest $request, NoteTag $noteTag): JsonResponse
+    public function update(UpdateNoteTagRequest $request, NoteTag $noteTag): JsonResponse
     {
         $this->authorize('update', $noteTag);
         $tag = $this->noteService->updateTag($noteTag, $request->validated());
