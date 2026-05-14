@@ -31,6 +31,7 @@ class SubtaskController extends Controller
     public function update(Request $request, Task $task, Subtask $subtask): JsonResponse
     {
         abort_unless($task->user_id === $request->user()->id, 403);
+        abort_unless($subtask->task_id === $task->id, 404);
 
         $data = $request->validate([
             'title' => ['sometimes', 'required', 'string', 'max:500'],
@@ -38,13 +39,16 @@ class SubtaskController extends Controller
         ]);
 
         $subtask->update($data);
+
         return $this->success(new SubtaskResource($subtask));
     }
 
     public function destroy(Request $request, Task $task, Subtask $subtask): JsonResponse
     {
         abort_unless($task->user_id === $request->user()->id, 403);
+        abort_unless($subtask->task_id === $task->id, 404);
         $subtask->delete();
+
         return $this->noContent();
     }
 }
