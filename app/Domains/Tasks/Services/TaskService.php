@@ -26,9 +26,16 @@ final class TaskService
 
     public function list(User $user, array $filters = []): LengthAwarePaginator
     {
+        $showArchived = isset($filters['archived']) && $filters['archived'];
+
         $query = Task::forUser($user->id)
-            ->with(['labels', 'subtasks'])
-            ->notArchived();
+            ->with(['labels', 'subtasks']);
+
+        if ($showArchived) {
+            $query->where('is_archived', true);
+        } else {
+            $query->notArchived();
+        }
 
         if (! empty($filters['status'])) {
             $query->where('status', $filters['status']);
@@ -48,10 +55,6 @@ final class TaskService
 
         if (! empty($filters['due_date'])) {
             $query->whereDate('due_date', $filters['due_date']);
-        }
-
-        if (isset($filters['archived']) && $filters['archived']) {
-            $query->withoutGlobalScope('notArchived')->where('is_archived', true);
         }
 
         $allowedSorts = ['position', 'created_at', 'due_date', 'priority', 'title', 'status'];
