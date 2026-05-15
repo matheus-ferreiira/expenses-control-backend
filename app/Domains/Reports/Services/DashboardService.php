@@ -65,8 +65,8 @@ final class DashboardService
             ->inPeriod($startOfMonth->toDateString(), $endOfMonth->toDateString())
             ->get();
 
-        $income = $monthTransactions->where('type', TransactionType::Income->value)->sum('amount');
-        $expenses = $monthTransactions->where('type', TransactionType::Expense->value)->sum('amount');
+        $income = $monthTransactions->where('type', TransactionType::Income)->sum('amount');
+        $expenses = $monthTransactions->where('type', TransactionType::Expense)->sum('amount');
 
         $totalBalance = BankAccount::forUser($user->id)->active()->sum('balance');
 
