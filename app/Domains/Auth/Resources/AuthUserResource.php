@@ -16,6 +16,7 @@ class AuthUserResource extends JsonResource
             'avatar' => $this->avatar,
             'locale' => $this->locale,
             'timezone' => $this->timezone,
+            'settings' => $this->settings ?? [],
             'email_verified_at' => $this->email_verified_at?->toISOString(),
             'created_at' => $this->created_at->toISOString(),
         ];
