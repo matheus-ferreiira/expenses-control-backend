@@ -19,9 +19,7 @@ final class UpdateTaskAction
             'recurrence_config' => $dto->recurrenceConfig,
         ]);
 
-        if (! empty($dto->labelIds)) {
-            $task->labels()->sync($dto->labelIds);
-        }
+        $task->labels()->sync($dto->labelIds ?? []);
 
         return $task->load(['labels', 'subtasks']);
     }
