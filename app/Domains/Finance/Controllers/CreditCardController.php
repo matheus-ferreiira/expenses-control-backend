@@ -27,7 +27,7 @@ class CreditCardController extends Controller
 
     public function store(StoreCreditCardRequest $request, BankAccount $bankAccount): JsonResponse
     {
-        abort_unless($bankAccount->user_id === $request->user()->id, 403);
+        $this->authorize('update', $bankAccount);
         $card = $this->service->createCreditCard($bankAccount, $request->validated());
 
         return $this->created(new CreditCardResource($card));
@@ -35,14 +35,14 @@ class CreditCardController extends Controller
 
     public function show(Request $request, CreditCard $creditCard): JsonResponse
     {
-        abort_unless($creditCard->user_id === $request->user()->id, 403);
+        $this->authorize('view', $creditCard);
 
         return $this->success(new CreditCardResource($creditCard));
     }
 
     public function update(UpdateCreditCardRequest $request, CreditCard $creditCard): JsonResponse
     {
-        abort_unless($creditCard->user_id === $request->user()->id, 403);
+        $this->authorize('update', $creditCard);
         $card = $this->service->updateCreditCard($creditCard, $request->validated());
 
         return $this->success(new CreditCardResource($card), 'Card updated');
@@ -50,7 +50,7 @@ class CreditCardController extends Controller
 
     public function destroy(Request $request, CreditCard $creditCard): JsonResponse
     {
-        abort_unless($creditCard->user_id === $request->user()->id, 403);
+        $this->authorize('delete', $creditCard);
         $this->service->deleteCreditCard($creditCard);
 
         return $this->noContent();
