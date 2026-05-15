@@ -47,7 +47,7 @@ final class NoteService
             });
         }
 
-        return $query->orderByDesc('is_pinned')->orderByDesc('updated_at')->get();
+        return $query->orderByDesc('is_pinned')->orderByDesc('updated_at')->limit(200)->get();
     }
 
     public function create(User $user, NoteDTO $dto): Note
@@ -88,7 +88,9 @@ final class NoteService
 
     public function touch(Note $note): Note
     {
-        $note->update(['last_viewed_at' => now()]);
+        if ($note->last_viewed_at === null || $note->last_viewed_at->diffInMinutes(now()) >= 5) {
+            $note->update(['last_viewed_at' => now()]);
+        }
 
         return $note;
     }
