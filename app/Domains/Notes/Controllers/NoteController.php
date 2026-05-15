@@ -4,7 +4,9 @@ namespace App\Domains\Notes\Controllers;
 
 use App\Domains\Notes\DTOs\NoteDTO;
 use App\Domains\Notes\Models\Note;
+use App\Domains\Notes\Requests\FavoriteNoteRequest;
 use App\Domains\Notes\Requests\NoteFilterRequest;
+use App\Domains\Notes\Requests\PinNoteRequest;
 use App\Domains\Notes\Requests\StoreNoteRequest;
 use App\Domains\Notes\Requests\UpdateNoteRequest;
 use App\Domains\Notes\Resources\NoteResource;
@@ -60,20 +62,18 @@ class NoteController extends Controller
         return $this->noContent();
     }
 
-    public function pin(Request $request, Note $note): JsonResponse
+    public function pin(PinNoteRequest $request, Note $note): JsonResponse
     {
         $this->authorize('update', $note);
-        $request->validate(['pinned' => ['required', 'boolean']]);
-        $note = $this->noteService->pin($note, $request->boolean('pinned'));
+        $note = $this->noteService->pin($note, (bool) $request->validated()['pinned']);
 
         return $this->success(new NoteResource($note), 'Note pin updated');
     }
 
-    public function favorite(Request $request, Note $note): JsonResponse
+    public function favorite(FavoriteNoteRequest $request, Note $note): JsonResponse
     {
         $this->authorize('update', $note);
-        $request->validate(['favorited' => ['required', 'boolean']]);
-        $note = $this->noteService->favorite($note, $request->boolean('favorited'));
+        $note = $this->noteService->favorite($note, (bool) $request->validated()['favorited']);
 
         return $this->success(new NoteResource($note), 'Note favorite updated');
     }
