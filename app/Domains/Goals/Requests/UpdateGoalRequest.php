@@ -12,9 +12,9 @@ class UpdateGoalRequest extends BaseFormRequest
     public function rules(): array
     {
         return [
-            'title' => ['sometimes', 'required', 'string', 'max:255'],
-            'type' => ['nullable', new Enum(GoalType::class)],
-            'status' => ['nullable', new Enum(GoalStatus::class)],
+            'title' => ['sometimes', 'string', 'max:255', 'min:1'],
+            'type' => ['sometimes', new Enum(GoalType::class)],
+            'status' => ['sometimes', new Enum(GoalStatus::class)],
             'description' => ['nullable', 'string'],
             'target_amount' => ['nullable', 'numeric', 'min:0'],
             'target_date' => ['nullable', 'date'],
