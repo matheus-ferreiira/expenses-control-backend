@@ -55,15 +55,21 @@ final class FinanceReportService
 
     public function getYearlySummary(User $user, int $year): array
     {
+        $transactions = Transaction::forUser($user->id)
+            ->whereYear('transaction_date', $year)
+            ->get();
+
         $months = [];
         for ($m = 1; $m <= 12; $m++) {
-            $data = Transaction::forUser($user->id)->inMonth($year, $m)->get();
+            $data = $transactions->filter(fn ($t) => $t->transaction_date->month === $m);
+            $income = (float) $data->where('type', TransactionType::Income)->sum('amount');
+            $expenses = (float) $data->where('type', TransactionType::Expense)->sum('amount');
             $months[$m] = [
                 'month' => $m,
-                'income' => (float) $data->where('type', TransactionType::Income->value)->sum('amount'),
-                'expenses' => (float) $data->where('type', TransactionType::Expense->value)->sum('amount'),
+                'income' => $income,
+                'expenses' => $expenses,
+                'balance' => $income - $expenses,
             ];
-            $months[$m]['balance'] = $months[$m]['income'] - $months[$m]['expenses'];
         }
 
         return ['year' => $year, 'months' => array_values($months)];
