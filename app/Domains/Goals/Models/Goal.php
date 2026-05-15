@@ -5,6 +5,7 @@ namespace App\Domains\Goals\Models;
 use App\Domains\Goals\Enums\GoalStatus;
 use App\Domains\Goals\Enums\GoalType;
 use App\Models\User;
+use Database\Factories\GoalFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -36,6 +37,11 @@ class Goal extends Model
         'target_date' => 'date',
         'completed_at' => 'datetime',
     ];
+
+    protected static function newFactory(): GoalFactory
+    {
+        return GoalFactory::new();
+    }
 
     public function user(): BelongsTo
     {
