@@ -15,11 +15,11 @@ final class FinanceReportService
             ->with('category')
             ->get();
 
-        $income = $transactions->where('type', TransactionType::Income->value)->sum('amount');
-        $expenses = $transactions->where('type', TransactionType::Expense->value)->sum('amount');
+        $income = $transactions->where('type', TransactionType::Income)->sum('amount');
+        $expenses = $transactions->where('type', TransactionType::Expense)->sum('amount');
 
         $expensesByCategory = $transactions
-            ->where('type', TransactionType::Expense->value)
+            ->where('type', TransactionType::Expense)
             ->groupBy('category_id')
             ->map(function ($group) {
                 $first = $group->first();
@@ -85,16 +85,16 @@ final class FinanceReportService
         $byDate = $transactions->groupBy(fn ($t) => $t->transaction_date->toDateString())
             ->map(function ($group) {
                 return [
-                    'income' => (float) $group->where('type', TransactionType::Income->value)->sum('amount'),
-                    'expenses' => (float) $group->where('type', TransactionType::Expense->value)->sum('amount'),
+                    'income' => (float) $group->where('type', TransactionType::Income)->sum('amount'),
+                    'expenses' => (float) $group->where('type', TransactionType::Expense)->sum('amount'),
                 ];
             });
 
         return [
             'start_date' => $startDate,
             'end_date' => $endDate,
-            'total_income' => (float) $transactions->where('type', TransactionType::Income->value)->sum('amount'),
-            'total_expenses' => (float) $transactions->where('type', TransactionType::Expense->value)->sum('amount'),
+            'total_income' => (float) $transactions->where('type', TransactionType::Income)->sum('amount'),
+            'total_expenses' => (float) $transactions->where('type', TransactionType::Expense)->sum('amount'),
             'by_date' => $byDate,
         ];
     }
