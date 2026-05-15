@@ -10,6 +10,7 @@ use App\Domains\Finance\Models\BankAccount;
 use App\Domains\Finance\Models\Transaction;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 final class TransactionService
 {
@@ -77,15 +78,17 @@ final class TransactionService
 
     public function delete(Transaction $transaction): void
     {
-        if ($transaction->account_id) {
-            $account = BankAccount::find($transaction->account_id);
-            if ($account) {
-                $delta = $transaction->type === TransactionType::Income
-                    ? -$transaction->amount
-                    : $transaction->amount;
-                $account->increment('balance', $delta);
+        DB::transaction(function () use ($transaction) {
+            if ($transaction->account_id) {
+                $account = BankAccount::find($transaction->account_id);
+                if ($account) {
+                    $delta = $transaction->type === TransactionType::Income
+                        ? -$transaction->amount
+                        : $transaction->amount;
+                    $account->increment('balance', $delta);
+                }
             }
-        }
-        $transaction->delete();
+            $transaction->delete();
+        });
     }
 }
