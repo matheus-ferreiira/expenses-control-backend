@@ -66,7 +66,7 @@ class Habit extends Model
         return $query->whereNotNull('archived_at');
     }
 
-    public function isArchivedAttribute(): bool
+    public function getIsArchivedAttribute(): bool
     {
         return $this->archived_at !== null;
     }
