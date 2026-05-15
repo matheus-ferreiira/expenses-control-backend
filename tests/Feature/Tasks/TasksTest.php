@@ -169,4 +169,60 @@ class TasksTest extends TestCase
 
         $this->assertDatabaseHas('subtasks', ['id' => $subtask->id]);
     }
+
+    // ── Complete Task Enum ────────────────────────────────────────────────────
+
+    public function test_completing_task_sets_status_to_completed(): void
+    {
+        $user = User::factory()->create();
+        $task = Task::factory()->create(['user_id' => $user->id]);
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->patchJson("/api/v1/tasks/{$task->id}/complete");
+
+        $response->assertOk();
+        $this->assertDatabaseHas('tasks', [
+            'id' => $task->id,
+            'status' => 'completed',
+        ]);
+        $this->assertNotNull($task->fresh()->completed_at);
+    }
+
+    public function test_completed_tasks_are_excluded_from_overdue_scope(): void
+    {
+        $user = User::factory()->create();
+        $completed = Task::factory()->create([
+            'user_id' => $user->id,
+            'due_date' => now()->subDay(),
+            'status' => 'completed',
+        ]);
+        $pending = Task::factory()->create([
+            'user_id' => $user->id,
+            'due_date' => now()->subDay(),
+            'status' => 'pending',
+        ]);
+
+        $overdue = Task::overdue()->pluck('id');
+
+        $this->assertFalse($overdue->contains($completed->id));
+        $this->assertTrue($overdue->contains($pending->id));
+    }
+
+    // ── Label Ownership ───────────────────────────────────────────────────────
+
+    public function test_user_cannot_attach_label_belonging_to_another_user(): void
+    {
+        $owner = User::factory()->create();
+        $attacker = User::factory()->create();
+
+        $otherLabel = \App\Domains\Tasks\Models\TaskLabel::factory()->create(['user_id' => $owner->id]);
+
+        $response = $this->actingAs($attacker, 'sanctum')
+            ->postJson('/api/v1/tasks', [
+                'title' => 'hacked task',
+                'label_ids' => [$otherLabel->id],
+            ]);
+
+        $response->assertUnprocessable();
+    }
 }

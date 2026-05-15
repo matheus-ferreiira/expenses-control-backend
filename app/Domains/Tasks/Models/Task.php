@@ -87,6 +87,6 @@ class Task extends Model
 
     public function scopeOverdue(Builder $query): Builder
     {
-        return $query->where('due_date', '<', now())->where('status', '!=', TaskStatus::Done->value);
+        return $query->where('due_date', '<', now())->where('status', '!=', TaskStatus::Completed->value);
     }
 }
