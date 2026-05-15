@@ -17,6 +17,7 @@ class PurchaseItemController extends Controller
         $items = PurchaseItem::forUser($request->user()->id)
             ->orderBy('is_bought')
             ->orderByDesc('created_at')
+            ->limit(200)
             ->get();
 
         return $this->success(PurchaseItemResource::collection($items));
@@ -34,7 +35,7 @@ class PurchaseItemController extends Controller
 
     public function update(UpdatePurchaseItemRequest $request, PurchaseItem $purchase): JsonResponse
     {
-        $this->authorizeItem($request, $purchase);
+        $this->authorize('update', $purchase);
         $purchase->update($request->validated());
 
         return $this->success(new PurchaseItemResource($purchase), 'Item updated');
@@ -42,14 +43,9 @@ class PurchaseItemController extends Controller
 
     public function destroy(Request $request, PurchaseItem $purchase): JsonResponse
     {
-        $this->authorizeItem($request, $purchase);
+        $this->authorize('delete', $purchase);
         $purchase->delete();
 
         return $this->noContent();
-    }
-
-    private function authorizeItem(Request $request, PurchaseItem $item): void
-    {
-        abort_unless($item->user_id === $request->user()->id, 403);
     }
 }

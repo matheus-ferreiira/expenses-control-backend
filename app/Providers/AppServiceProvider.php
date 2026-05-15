@@ -20,6 +20,8 @@ use App\Domains\Notes\Models\Note;
 use App\Domains\Notes\Models\NoteTag;
 use App\Domains\Notes\Policies\NotePolicy;
 use App\Domains\Notes\Policies\NoteTagPolicy;
+use App\Domains\Purchases\Models\PurchaseItem;
+use App\Domains\Purchases\Policies\PurchaseItemPolicy;
 use App\Domains\Tasks\Models\Task;
 use App\Domains\Tasks\Policies\TaskPolicy;
 use Illuminate\Support\Facades\Gate;
@@ -41,5 +43,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(CalendarEvent::class, CalendarEventPolicy::class);
         Gate::policy(Note::class, NotePolicy::class);
         Gate::policy(NoteTag::class, NoteTagPolicy::class);
+        Gate::policy(PurchaseItem::class, PurchaseItemPolicy::class);
     }
 }
