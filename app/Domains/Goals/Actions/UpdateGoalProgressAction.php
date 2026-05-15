@@ -4,20 +4,23 @@ namespace App\Domains\Goals\Actions;
 
 use App\Domains\Goals\Enums\GoalStatus;
 use App\Domains\Goals\Models\Goal;
+use Illuminate\Support\Facades\DB;
 
 final class UpdateGoalProgressAction
 {
     public function execute(Goal $goal, float $amount): Goal
     {
-        $goal->current_amount = max(0, $amount);
+        return DB::transaction(function () use ($goal, $amount) {
+            $goal->current_amount = max(0, $amount);
 
-        if ($goal->target_amount && $goal->current_amount >= $goal->target_amount) {
-            $goal->status = GoalStatus::Completed;
-            $goal->completed_at = now();
-        }
+            if ($goal->target_amount && $goal->current_amount >= $goal->target_amount) {
+                $goal->status = GoalStatus::Completed;
+                $goal->completed_at = now();
+            }
 
-        $goal->save();
+            $goal->save();
 
-        return $goal;
+            return $goal;
+        });
     }
 }
