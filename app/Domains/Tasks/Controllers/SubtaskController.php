@@ -13,7 +13,7 @@ class SubtaskController extends Controller
 {
     public function store(Request $request, Task $task): JsonResponse
     {
-        abort_unless($task->user_id === $request->user()->id, 403);
+        $this->authorize('update', $task);
 
         $data = $request->validate([
             'title' => ['required', 'string', 'max:500'],
@@ -30,7 +30,7 @@ class SubtaskController extends Controller
 
     public function update(Request $request, Task $task, Subtask $subtask): JsonResponse
     {
-        abort_unless($task->user_id === $request->user()->id, 403);
+        $this->authorize('update', $task);
         abort_unless($subtask->task_id === $task->id, 404);
 
         $data = $request->validate([
@@ -45,7 +45,7 @@ class SubtaskController extends Controller
 
     public function destroy(Request $request, Task $task, Subtask $subtask): JsonResponse
     {
-        abort_unless($task->user_id === $request->user()->id, 403);
+        $this->authorize('update', $task);
         abort_unless($subtask->task_id === $task->id, 404);
         $subtask->delete();
 
