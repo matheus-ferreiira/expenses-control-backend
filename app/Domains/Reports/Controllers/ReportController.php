@@ -3,6 +3,7 @@
 namespace App\Domains\Reports\Controllers;
 
 use App\Domains\Habits\Models\Habit;
+use App\Domains\Habits\Models\HabitLog;
 use App\Domains\Habits\Services\HabitStatsService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
@@ -13,6 +14,18 @@ class ReportController extends Controller
     public function __construct(
         private readonly HabitStatsService $habitStatsService,
     ) {}
+
+    public function habitsLogCount(Request $request): JsonResponse
+    {
+        $request->validate(['since' => ['required', 'date_format:Y-m-d']]);
+        $user = $request->user();
+
+        $count = HabitLog::whereHas('habit', fn ($q) => $q->where('user_id', $user->id))
+            ->where('completed_date', '>=', $request->query('since'))
+            ->count();
+
+        return $this->success(['count' => $count]);
+    }
 
     public function weeklyProductivity(Request $request): JsonResponse
     {

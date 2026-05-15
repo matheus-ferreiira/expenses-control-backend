@@ -134,6 +134,7 @@ Route::prefix('v1')->group(function () {
 
         // Reports
         Route::prefix('reports')->group(function () {
+            Route::get('habits-log-count', [ReportController::class, 'habitsLogCount']);
             Route::get('weekly-productivity', [ReportController::class, 'weeklyProductivity']);
         });
 
