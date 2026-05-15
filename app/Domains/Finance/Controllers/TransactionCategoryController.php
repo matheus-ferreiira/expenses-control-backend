@@ -33,7 +33,7 @@ class TransactionCategoryController extends Controller
 
     public function update(Request $request, TransactionCategory $transactionCategory): JsonResponse
     {
-        abort_unless($transactionCategory->user_id === $request->user()->id, 403);
+        $this->authorize('update', $transactionCategory);
 
         $data = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:100'],
@@ -48,7 +48,7 @@ class TransactionCategoryController extends Controller
 
     public function destroy(Request $request, TransactionCategory $transactionCategory): JsonResponse
     {
-        abort_unless($transactionCategory->user_id === $request->user()->id, 403);
+        $this->authorize('delete', $transactionCategory);
         $transactionCategory->delete();
 
         return $this->noContent();
