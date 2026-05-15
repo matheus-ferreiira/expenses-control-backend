@@ -87,7 +87,7 @@ final class DashboardService
         return [
             'active_count' => $goals->count(),
             'near_deadline' => $goals->filter(
-                fn ($g) => $g->target_date && $g->target_date->diffInDays(now()) <= 30
+                fn ($g) => $g->target_date && $g->target_date->isFuture() && $g->target_date->diffInDays(now()) <= 30
             )->count(),
             'recent' => $goals->sortBy('target_date')->take(3)->values(),
         ];
