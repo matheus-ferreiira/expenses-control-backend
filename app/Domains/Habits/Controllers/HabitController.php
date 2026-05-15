@@ -5,7 +5,9 @@ namespace App\Domains\Habits\Controllers;
 use App\Domains\Habits\DTOs\HabitDTO;
 use App\Domains\Habits\DTOs\HabitLogDTO;
 use App\Domains\Habits\Models\Habit;
+use App\Domains\Habits\Requests\LogHabitRequest;
 use App\Domains\Habits\Requests\StoreHabitRequest;
+use App\Domains\Habits\Requests\UnlogHabitRequest;
 use App\Domains\Habits\Requests\UpdateHabitRequest;
 use App\Domains\Habits\Resources\HabitResource;
 use App\Domains\Habits\Services\HabitService;
@@ -82,23 +84,18 @@ class HabitController extends Controller
         return $this->success(new HabitResource($habit), 'Habit unarchived');
     }
 
-    public function log(Request $request, Habit $habit): JsonResponse
+    public function log(LogHabitRequest $request, Habit $habit): JsonResponse
     {
         $this->authorize('update', $habit);
-        $data = $request->validate([
-            'completed_date' => ['required', 'date'],
-            'notes' => ['nullable', 'string'],
-        ]);
-        $this->habitService->log($habit, HabitLogDTO::fromArray($data));
+        $this->habitService->log($habit, HabitLogDTO::fromArray($request->validated()));
 
         return $this->success(new HabitResource($habit->fresh()->load('logs')), 'Habit logged');
     }
 
-    public function unlog(Request $request, Habit $habit): JsonResponse
+    public function unlog(UnlogHabitRequest $request, Habit $habit): JsonResponse
     {
         $this->authorize('update', $habit);
-        $request->validate(['date' => ['required', 'date']]);
-        $this->habitService->unlog($habit, $request->date);
+        $this->habitService->unlog($habit, $request->validated()['date']);
 
         return $this->success(message: 'Log removed');
     }
