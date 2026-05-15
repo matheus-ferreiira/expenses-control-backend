@@ -16,6 +16,6 @@ final class CompleteTaskAction
 
         $task->subtasks()->update(['completed' => true]);
 
-        return $task;
+        return $task->load(['labels', 'subtasks']);
     }
 }
