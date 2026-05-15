@@ -3,14 +3,16 @@
 namespace App\Domains\Purchases\Models;
 
 use App\Models\User;
+use Database\Factories\PurchaseItemFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class PurchaseItem extends Model
 {
-    use HasUuids, SoftDeletes;
+    use HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
         'user_id',
@@ -22,6 +24,11 @@ class PurchaseItem extends Model
     protected $casts = [
         'is_bought' => 'boolean',
     ];
+
+    protected static function newFactory(): PurchaseItemFactory
+    {
+        return PurchaseItemFactory::new();
+    }
 
     public function user(): BelongsTo
     {
