@@ -4,6 +4,7 @@ namespace App\Domains\Calendar\Models;
 
 use App\Domains\Calendar\Enums\EventSource;
 use App\Models\User;
+use Database\Factories\CalendarEventFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -37,6 +38,11 @@ class CalendarEvent extends Model
         'is_all_day' => 'boolean',
         'metadata' => 'array',
     ];
+
+    protected static function newFactory(): CalendarEventFactory
+    {
+        return CalendarEventFactory::new();
+    }
 
     public function user(): BelongsTo
     {
