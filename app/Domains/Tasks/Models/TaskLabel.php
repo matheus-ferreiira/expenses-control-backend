@@ -3,6 +3,7 @@
 namespace App\Domains\Tasks\Models;
 
 use App\Models\User;
+use Database\Factories\TaskLabelFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,6 +14,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class TaskLabel extends Model
 {
     use HasFactory, HasUuids;
+
+    protected static function newFactory(): TaskLabelFactory
+    {
+        return TaskLabelFactory::new();
+    }
 
     protected $fillable = ['user_id', 'name', 'color'];
 

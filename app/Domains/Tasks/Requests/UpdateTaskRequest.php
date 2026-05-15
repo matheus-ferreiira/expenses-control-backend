@@ -6,6 +6,7 @@ use App\Domains\Tasks\Enums\RecurrenceType;
 use App\Domains\Tasks\Enums\TaskPriority;
 use App\Domains\Tasks\Enums\TaskStatus;
 use App\Http\Requests\BaseFormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
 
 class UpdateTaskRequest extends BaseFormRequest
@@ -21,7 +22,7 @@ class UpdateTaskRequest extends BaseFormRequest
             'recurrence_type' => ['nullable', new Enum(RecurrenceType::class)],
             'recurrence_config' => ['nullable', 'array'],
             'label_ids' => ['nullable', 'array'],
-            'label_ids.*' => ['uuid', 'exists:task_labels,id'],
+            'label_ids.*' => ['uuid', Rule::exists('task_labels', 'id')->where('user_id', $this->user()->id)],
         ];
     }
 }
