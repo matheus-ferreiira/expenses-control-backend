@@ -4,6 +4,7 @@ namespace App\Domains\Calendar\Controllers;
 
 use App\Domains\Calendar\DTOs\CalendarEventDTO;
 use App\Domains\Calendar\Models\CalendarEvent;
+use App\Domains\Calendar\Requests\CalendarEventFilterRequest;
 use App\Domains\Calendar\Requests\StoreCalendarEventRequest;
 use App\Domains\Calendar\Requests\UpdateCalendarEventRequest;
 use App\Domains\Calendar\Resources\CalendarEventResource;
@@ -18,17 +19,12 @@ class CalendarEventController extends Controller
         private readonly CalendarService $calendarService,
     ) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(CalendarEventFilterRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'start_date' => ['required', 'date'],
-            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
-        ]);
-
         $events = $this->calendarService->getEventsInRange(
             $request->user(),
-            $validated['start_date'],
-            $validated['end_date']
+            $request->validated()['start_date'],
+            $request->validated()['end_date']
         );
 
         return $this->success(CalendarEventResource::collection($events));
@@ -36,7 +32,7 @@ class CalendarEventController extends Controller
 
     public function upcoming(Request $request): JsonResponse
     {
-        $days = (int) $request->query('days', 7);
+        $days = max(1, min(365, (int) $request->query('days', 7)));
         $events = $this->calendarService->getUpcomingEvents($request->user(), $days);
 
         return $this->success(CalendarEventResource::collection($events));
