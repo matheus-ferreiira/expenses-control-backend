@@ -20,6 +20,7 @@ final class LoginAction
 
         /** @var User $user */
         $user = Auth::user();
+        $user->tokens()->delete();
         $token = $user->createToken('api-token')->plainTextToken;
 
         return ['user' => $user, 'token' => $token];
