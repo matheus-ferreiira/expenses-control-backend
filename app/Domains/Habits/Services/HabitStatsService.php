@@ -16,19 +16,18 @@ final class HabitStatsService
         $startOfWeek = $today->copy()->startOfWeek();
         $startOfMonth = $today->copy()->startOfMonth();
 
-        $completedThisWeek = $habit->logs()
-            ->where('completed_date', '>=', $startOfWeek)
-            ->count();
-
-        $completedThisMonth = $habit->logs()
-            ->where('completed_date', '>=', $startOfMonth)
-            ->count();
-
-        $totalCompleted = $habit->logs()->count();
-
-        $completedToday = $habit->logs()
-            ->whereDate('completed_date', $today)
-            ->exists();
+        if ($habit->relationLoaded('logs')) {
+            $allLogs = $habit->logs;
+            $completedThisWeek = $allLogs->filter(fn ($l) => $l->completed_date >= $startOfWeek)->count();
+            $completedThisMonth = $allLogs->filter(fn ($l) => $l->completed_date >= $startOfMonth)->count();
+            $totalCompleted = $allLogs->count();
+            $completedToday = $allLogs->contains(fn ($l) => $l->completed_date->isSameDay($today));
+        } else {
+            $completedThisWeek = $habit->logs()->where('completed_date', '>=', $startOfWeek)->count();
+            $completedThisMonth = $habit->logs()->where('completed_date', '>=', $startOfMonth)->count();
+            $totalCompleted = $habit->logs()->count();
+            $completedToday = $habit->logs()->whereDate('completed_date', $today)->exists();
+        }
 
         return [
             'current_streak' => $this->streakService->getCurrentStreak($habit),

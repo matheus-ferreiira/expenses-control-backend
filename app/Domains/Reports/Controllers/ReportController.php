@@ -20,12 +20,16 @@ class ReportController extends Controller
         $startOfWeek = now()->startOfWeek();
         $endOfWeek = now()->endOfWeek();
 
-        $habitsStats = Habit::forUser($user->id)->active()->get()->map(function ($habit) {
-            return [
-                'habit' => $habit->only(['id', 'name', 'color']),
-                'stats' => $this->habitStatsService->getStats($habit),
-            ];
-        });
+        $habitsStats = Habit::forUser($user->id)
+            ->active()
+            ->with(['logs' => fn ($q) => $q->whereDate('completed_date', '>=', today()->subYears(2))->orderByDesc('completed_date')])
+            ->get()
+            ->map(function ($habit) {
+                return [
+                    'habit' => $habit->only(['id', 'name', 'color']),
+                    'stats' => $this->habitStatsService->getStats($habit),
+                ];
+            });
 
         return $this->success([
             'week_start' => $startOfWeek->toDateString(),

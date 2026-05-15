@@ -8,9 +8,9 @@ final class HabitStreakService
 {
     public function getCurrentStreak(Habit $habit): int
     {
-        $logs = $habit->logs()
-            ->orderByDesc('completed_date')
-            ->pluck('completed_date');
+        $logs = $habit->relationLoaded('logs')
+            ? $habit->logs->sortByDesc('completed_date')->pluck('completed_date')->values()
+            : $habit->logs()->orderByDesc('completed_date')->pluck('completed_date');
 
         if ($logs->isEmpty()) {
             return 0;
@@ -41,9 +41,9 @@ final class HabitStreakService
 
     public function getLongestStreak(Habit $habit): int
     {
-        $logs = $habit->logs()
-            ->orderBy('completed_date')
-            ->pluck('completed_date');
+        $logs = $habit->relationLoaded('logs')
+            ? $habit->logs->sortBy('completed_date')->pluck('completed_date')->values()
+            : $habit->logs()->orderBy('completed_date')->pluck('completed_date');
 
         if ($logs->isEmpty()) {
             return 0;
@@ -68,9 +68,10 @@ final class HabitStreakService
     public function getCompletionRate(Habit $habit, int $days = 30): float
     {
         $startDate = today()->subDays($days - 1);
-        $completedDays = $habit->logs()
-            ->where('completed_date', '>=', $startDate)
-            ->count();
+
+        $completedDays = $habit->relationLoaded('logs')
+            ? $habit->logs->filter(fn ($l) => $l->completed_date >= $startDate)->count()
+            : $habit->logs()->where('completed_date', '>=', $startDate)->count();
 
         return round(($completedDays / $days) * 100, 1);
     }
