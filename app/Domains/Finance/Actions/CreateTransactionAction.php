@@ -43,17 +43,19 @@ final class CreateTransactionAction
         return DB::transaction(function () use ($user, $dto) {
             $groupId = (string) Str::uuid();
             $installmentAmount = round($dto->amount / $dto->totalInstallments, 2);
+            $lastInstallmentAmount = round($dto->amount - ($installmentAmount * ($dto->totalInstallments - 1)), 2);
             $transactions = [];
             $baseDate = Carbon::parse($dto->transactionDate);
 
             for ($i = 1; $i <= $dto->totalInstallments; $i++) {
+                $amount = $i === $dto->totalInstallments ? $lastInstallmentAmount : $installmentAmount;
                 $transaction = Transaction::create([
                     'user_id' => $user->id,
                     'account_id' => $dto->accountId,
                     'card_id' => $dto->cardId,
                     'category_id' => $dto->categoryId,
                     'type' => $dto->type,
-                    'amount' => $installmentAmount,
+                    'amount' => $amount,
                     'description' => "{$dto->description} ({$i}/{$dto->totalInstallments})",
                     'notes' => $dto->notes,
                     'transaction_date' => $baseDate->copy()->addMonths($i - 1)->toDateString(),
