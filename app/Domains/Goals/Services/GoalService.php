@@ -44,6 +44,7 @@ final class GoalService
             'title' => $dto->title,
             'description' => $dto->description,
             'target_amount' => $dto->targetAmount,
+            'current_amount' => $dto->currentAmount,
             'target_date' => $dto->targetDate,
         ]);
 
