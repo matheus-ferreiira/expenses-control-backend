@@ -3,6 +3,7 @@
 namespace App\Domains\Notes\Requests;
 
 use App\Http\Requests\BaseFormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateNoteRequest extends BaseFormRequest
 {
@@ -14,7 +15,7 @@ class UpdateNoteRequest extends BaseFormRequest
             'is_pinned' => ['sometimes', 'boolean'],
             'is_favorite' => ['sometimes', 'boolean'],
             'tag_ids' => ['sometimes', 'array'],
-            'tag_ids.*' => ['uuid', 'exists:note_tags,id'],
+            'tag_ids.*' => ['uuid', Rule::exists('note_tags', 'id')->where('user_id', $this->user()->id)],
         ];
     }
 }
