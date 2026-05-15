@@ -3,6 +3,7 @@
 namespace App\Domains\Finance\Models;
 
 use App\Models\User;
+use Database\Factories\CreditCardFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,6 +15,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class CreditCard extends Model
 {
     use HasFactory, HasUuids, SoftDeletes;
+
+    protected static function newFactory(): CreditCardFactory
+    {
+        return CreditCardFactory::new();
+    }
 
     protected $fillable = [
         'user_id',
