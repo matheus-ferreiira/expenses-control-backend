@@ -8,6 +8,7 @@ final readonly class HabitDTO
 {
     public function __construct(
         public string $name,
+        public ?string $category = null,
         public ?string $description = null,
         public FrequencyType $frequencyType = FrequencyType::Daily,
         public int $targetFrequency = 1,
@@ -20,6 +21,7 @@ final readonly class HabitDTO
     {
         return new self(
             name: $data['name'],
+            category: $data['category'] ?? null,
             description: $data['description'] ?? null,
             frequencyType: FrequencyType::from($data['frequency_type'] ?? FrequencyType::Daily->value),
             targetFrequency: (int) ($data['target_frequency'] ?? 1),

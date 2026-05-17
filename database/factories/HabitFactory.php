@@ -16,6 +16,7 @@ class HabitFactory extends Factory
         return [
             'user_id' => User::factory(),
             'name' => $this->faker->words(3, true),
+            'category' => $this->faker->optional()->randomElement(['Saúde', 'Mente', 'Aprendizado', 'Foco', 'Finanças']),
             'description' => $this->faker->optional()->sentence(),
             'frequency_type' => FrequencyType::Daily,
             'target_frequency' => 1,

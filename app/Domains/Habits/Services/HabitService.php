@@ -54,6 +54,7 @@ final class HabitService
     {
         $habit->update([
             'name' => $dto->name,
+            'category' => $dto->category,
             'description' => $dto->description,
             'frequency_type' => $dto->frequencyType,
             'target_frequency' => $dto->targetFrequency,

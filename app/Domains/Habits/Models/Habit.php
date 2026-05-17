@@ -20,6 +20,7 @@ class Habit extends Model
     protected $fillable = [
         'user_id',
         'name',
+        'category',
         'description',
         'frequency_type',
         'target_frequency',

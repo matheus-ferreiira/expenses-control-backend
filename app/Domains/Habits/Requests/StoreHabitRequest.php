@@ -12,6 +12,7 @@ class StoreHabitRequest extends BaseFormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
+            'category' => ['nullable', 'string', 'max:50'],
             'description' => ['nullable', 'string'],
             'frequency_type' => ['nullable', new Enum(FrequencyType::class)],
             'target_frequency' => ['nullable', 'integer', 'min:1', 'max:365'],

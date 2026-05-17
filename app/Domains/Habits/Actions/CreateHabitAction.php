@@ -13,6 +13,7 @@ final class CreateHabitAction
         return Habit::create([
             'user_id' => $user->id,
             'name' => $dto->name,
+            'category' => $dto->category,
             'description' => $dto->description,
             'frequency_type' => $dto->frequencyType,
             'target_frequency' => $dto->targetFrequency,

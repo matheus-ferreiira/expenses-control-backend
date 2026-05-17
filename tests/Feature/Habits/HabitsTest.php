@@ -168,6 +168,68 @@ class HabitsTest extends TestCase
             ->assertForbidden();
     }
 
+    // ── category field ────────────────────────────────────────────────────────
+
+    public function test_creating_habit_with_category_persists_it(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/habits', [
+                'name' => 'Meditar 10 minutos',
+                'category' => 'Mente',
+                'frequency_type' => 'daily',
+            ]);
+
+        $response->assertCreated();
+        $this->assertEquals('Mente', $response->json('data.category'));
+        $this->assertDatabaseHas('habits', [
+            'user_id' => $user->id,
+            'name' => 'Meditar 10 minutos',
+            'category' => 'Mente',
+        ]);
+    }
+
+    public function test_creating_habit_without_category_stores_null(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/habits', [
+                'name' => 'Beber água',
+                'frequency_type' => 'daily',
+            ]);
+
+        $response->assertCreated();
+        $this->assertNull($response->json('data.category'));
+    }
+
+    public function test_updating_habit_category(): void
+    {
+        $user = User::factory()->create();
+        $habit = Habit::factory()->create(['user_id' => $user->id, 'category' => 'Saúde']);
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->putJson("/api/v1/habits/{$habit->id}", ['name' => $habit->name, 'category' => 'Foco']);
+
+        $response->assertOk();
+        $this->assertEquals('Foco', $response->json('data.category'));
+        $this->assertDatabaseHas('habits', ['id' => $habit->id, 'category' => 'Foco']);
+    }
+
+    public function test_habit_list_includes_category_field(): void
+    {
+        $user = User::factory()->create();
+        Habit::factory()->create(['user_id' => $user->id, 'category' => 'Aprendizado']);
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->getJson('/api/v1/habits')
+            ->assertOk();
+
+        $this->assertArrayHasKey('category', $response->json('data.0'));
+        $this->assertEquals('Aprendizado', $response->json('data.0.category'));
+    }
+
     // ── unlog removes the correct log ─────────────────────────────────────────
 
     public function test_unlog_removes_log_for_given_date(): void
