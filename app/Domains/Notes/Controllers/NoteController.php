@@ -25,7 +25,7 @@ class NoteController extends Controller
     {
         $notes = $this->noteService->list($request->user(), $request->validated());
 
-        return $this->success(NoteResource::collection($notes));
+        return $this->paginatedSuccess(NoteResource::collection($notes));
     }
 
     public function store(StoreNoteRequest $request): JsonResponse

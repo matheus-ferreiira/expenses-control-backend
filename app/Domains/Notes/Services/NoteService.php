@@ -8,7 +8,7 @@ use App\Domains\Notes\DTOs\NoteDTO;
 use App\Domains\Notes\Models\Note;
 use App\Domains\Notes\Models\NoteTag;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 final class NoteService
 {
@@ -17,7 +17,7 @@ final class NoteService
         private readonly UpdateNoteAction $updateNote,
     ) {}
 
-    public function list(User $user, array $filters = []): Collection
+    public function list(User $user, array $filters = []): LengthAwarePaginator
     {
         $query = Note::forUser($user->id)->with('tags');
 
@@ -47,7 +47,7 @@ final class NoteService
             });
         }
 
-        return $query->orderByDesc('is_pinned')->orderByDesc('updated_at')->limit(200)->get();
+        return $query->orderByDesc('is_pinned')->orderByDesc('updated_at')->paginate(30);
     }
 
     public function create(User $user, NoteDTO $dto): Note
