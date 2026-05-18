@@ -7,6 +7,11 @@ use App\Models\User;
 
 class TransactionCategoryPolicy
 {
+    public function view(User $user, TransactionCategory $category): bool
+    {
+        return $user->id === $category->user_id;
+    }
+
     public function update(User $user, TransactionCategory $category): bool
     {
         return $user->id === $category->user_id;
