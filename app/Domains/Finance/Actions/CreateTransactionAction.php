@@ -19,23 +19,25 @@ final class CreateTransactionAction
             return $this->createInstallments($user, $dto);
         }
 
-        $transaction = Transaction::create([
-            'user_id' => $user->id,
-            'account_id' => $dto->accountId,
-            'card_id' => $dto->cardId,
-            'category_id' => $dto->categoryId,
-            'type' => $dto->type,
-            'amount' => $dto->amount,
-            'description' => $dto->description,
-            'notes' => $dto->notes,
-            'transaction_date' => $dto->transactionDate,
-            'is_recurring' => $dto->isRecurring,
-            'recurrence_config' => $dto->recurrenceConfig,
-        ]);
+        return DB::transaction(function () use ($user, $dto) {
+            $transaction = Transaction::create([
+                'user_id' => $user->id,
+                'account_id' => $dto->accountId,
+                'card_id' => $dto->cardId,
+                'category_id' => $dto->categoryId,
+                'type' => $dto->type,
+                'amount' => $dto->amount,
+                'description' => $dto->description,
+                'notes' => $dto->notes,
+                'transaction_date' => $dto->transactionDate,
+                'is_recurring' => $dto->isRecurring,
+                'recurrence_config' => $dto->recurrenceConfig,
+            ]);
 
-        $this->updateAccountBalance($transaction);
+            $this->updateAccountBalance($transaction);
 
-        return $transaction->load(['category', 'account', 'card']);
+            return $transaction->load(['category', 'account', 'card']);
+        });
     }
 
     private function createInstallments(User $user, TransactionDTO $dto): array
