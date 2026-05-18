@@ -14,7 +14,7 @@ class StoreBankAccountRequest extends BaseFormRequest
             'name' => ['required', 'string', 'max:255'],
             'type' => ['nullable', new Enum(AccountType::class)],
             'bank_name' => ['nullable', 'string', 'max:255'],
-            'balance' => ['nullable', 'numeric', 'min:-999999999'],
+            'balance' => ['nullable', 'numeric', 'min:-9999999', 'max:9999999999'],
             'currency' => ['nullable', 'string', 'size:3'],
             'color' => ['nullable', 'string', 'max:20'],
         ];
