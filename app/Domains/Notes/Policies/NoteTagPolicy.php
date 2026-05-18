@@ -7,6 +7,11 @@ use App\Models\User;
 
 class NoteTagPolicy
 {
+    public function view(User $user, NoteTag $tag): bool
+    {
+        return $user->id === $tag->user_id;
+    }
+
     public function update(User $user, NoteTag $tag): bool
     {
         return $user->id === $tag->user_id;

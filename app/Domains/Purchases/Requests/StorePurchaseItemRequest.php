@@ -11,6 +11,7 @@ class StorePurchaseItemRequest extends BaseFormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'category' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'is_bought' => ['sometimes', 'boolean'],
         ];
     }
 }
