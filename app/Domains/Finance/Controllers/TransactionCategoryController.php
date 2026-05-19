@@ -3,6 +3,8 @@
 namespace App\Domains\Finance\Controllers;
 
 use App\Domains\Finance\Models\TransactionCategory;
+use App\Domains\Finance\Requests\StoreTransactionCategoryRequest;
+use App\Domains\Finance\Requests\UpdateTransactionCategoryRequest;
 use App\Domains\Finance\Resources\TransactionCategoryResource;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
@@ -17,31 +19,17 @@ class TransactionCategoryController extends Controller
         return $this->success(TransactionCategoryResource::collection($categories));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreTransactionCategoryRequest $request): JsonResponse
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:100'],
-            'type' => ['required', 'in:income,expense'],
-            'icon' => ['nullable', 'string', 'max:50'],
-            'color' => ['nullable', 'string', 'max:20'],
-        ]);
-
-        $category = TransactionCategory::create([...$data, 'user_id' => $request->user()->id]);
+        $category = TransactionCategory::create([...$request->validated(), 'user_id' => $request->user()->id]);
 
         return $this->created(new TransactionCategoryResource($category));
     }
 
-    public function update(Request $request, TransactionCategory $transactionCategory): JsonResponse
+    public function update(UpdateTransactionCategoryRequest $request, TransactionCategory $transactionCategory): JsonResponse
     {
         $this->authorize('update', $transactionCategory);
-
-        $data = $request->validate([
-            'name' => ['sometimes', 'required', 'string', 'max:100'],
-            'icon' => ['nullable', 'string', 'max:50'],
-            'color' => ['nullable', 'string', 'max:20'],
-        ]);
-
-        $transactionCategory->update($data);
+        $transactionCategory->update($request->validated());
 
         return $this->success(new TransactionCategoryResource($transactionCategory));
     }

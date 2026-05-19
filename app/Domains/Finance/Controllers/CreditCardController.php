@@ -30,7 +30,7 @@ class CreditCardController extends Controller
         $this->authorize('update', $bankAccount);
         $card = $this->service->createCreditCard($bankAccount, $request->validated());
 
-        return $this->created(new CreditCardResource($card));
+        return $this->created(new CreditCardResource($card->load('bankAccount')), 'Card created');
     }
 
     public function show(Request $request, CreditCard $creditCard): JsonResponse

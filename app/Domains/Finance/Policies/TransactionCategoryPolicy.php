@@ -9,7 +9,7 @@ class TransactionCategoryPolicy
 {
     public function view(User $user, TransactionCategory $category): bool
     {
-        return $user->id === $category->user_id;
+        return $category->user_id === null || $user->id === $category->user_id;
     }
 
     public function update(User $user, TransactionCategory $category): bool

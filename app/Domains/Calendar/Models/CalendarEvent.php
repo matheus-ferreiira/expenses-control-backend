@@ -62,7 +62,7 @@ class CalendarEvent extends Model
 
     public function scopeUpcoming(Builder $query, int $days = 7): Builder
     {
-        return $query->where('start_date', '>=', now())
+        return $query->where('end_date', '>=', now())
             ->where('start_date', '<=', now()->addDays($days));
     }
 }

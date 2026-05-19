@@ -18,20 +18,22 @@ final readonly class TaskDTO
         public ?array $recurrenceConfig = null,
         public ?int $position = null,
         public ?array $labelIds = null,
+        public array $provided = [],
     ) {}
 
     public static function fromArray(array $data): self
     {
         return new self(
             title: $data['title'] ?? null,
-            description: array_key_exists('description', $data) ? $data['description'] : null,
+            description: $data['description'] ?? null,
             priority: isset($data['priority']) ? TaskPriority::from($data['priority']) : null,
             status: isset($data['status']) ? TaskStatus::from($data['status']) : null,
-            dueDate: array_key_exists('due_date', $data) ? $data['due_date'] : null,
+            dueDate: $data['due_date'] ?? null,
             recurrenceType: isset($data['recurrence_type']) ? RecurrenceType::from($data['recurrence_type']) : null,
-            recurrenceConfig: array_key_exists('recurrence_config', $data) ? $data['recurrence_config'] : null,
+            recurrenceConfig: $data['recurrence_config'] ?? null,
             position: $data['position'] ?? null,
             labelIds: array_key_exists('label_ids', $data) ? ($data['label_ids'] ?? []) : null,
+            provided: array_keys($data),
         );
     }
 }
