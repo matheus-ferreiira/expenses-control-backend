@@ -23,6 +23,8 @@ use App\Domains\Notes\Policies\NoteTagPolicy;
 use App\Domains\Purchases\Models\PurchaseItem;
 use App\Domains\Purchases\Policies\PurchaseItemPolicy;
 use App\Domains\Tasks\Models\Task;
+use App\Domains\Tasks\Models\TaskLabel;
+use App\Domains\Tasks\Policies\TaskLabelPolicy;
 use App\Domains\Tasks\Policies\TaskPolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -34,6 +36,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::policy(Task::class, TaskPolicy::class);
+        Gate::policy(TaskLabel::class, TaskLabelPolicy::class);
         Gate::policy(Habit::class, HabitPolicy::class);
         Gate::policy(BankAccount::class, BankAccountPolicy::class);
         Gate::policy(CreditCard::class, CreditCardPolicy::class);

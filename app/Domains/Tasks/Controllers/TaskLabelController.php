@@ -36,7 +36,7 @@ class TaskLabelController extends Controller
 
     public function update(Request $request, TaskLabel $taskLabel): JsonResponse
     {
-        abort_unless($taskLabel->user_id === $request->user()->id, 403);
+        $this->authorize('update', $taskLabel);
 
         $data = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:100'],
@@ -50,7 +50,7 @@ class TaskLabelController extends Controller
 
     public function destroy(Request $request, TaskLabel $taskLabel): JsonResponse
     {
-        abort_unless($taskLabel->user_id === $request->user()->id, 403);
+        $this->authorize('delete', $taskLabel);
         $this->taskService->deleteLabel($taskLabel);
 
         return $this->noContent();
