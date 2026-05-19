@@ -16,6 +16,8 @@ class StoreHabitRequest extends BaseFormRequest
             'description' => ['nullable', 'string'],
             'frequency_type' => ['nullable', new Enum(FrequencyType::class)],
             'target_frequency' => ['nullable', 'integer', 'min:1', 'max:365'],
+            'target_days' => ['nullable', 'array'],
+            'target_days.*' => ['integer', 'min:0', 'max:6'],
             'color' => ['nullable', 'string', 'max:20'],
             'icon' => ['nullable', 'string', 'max:50'],
             'start_date' => ['nullable', 'date'],

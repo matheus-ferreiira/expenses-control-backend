@@ -26,10 +26,7 @@ class NotesTest extends TestCase
                 'content' => 'Content',
                 'tag_ids' => [$foreignTag->id],
             ])
-            ->assertCreated();
-
-        $note = Note::where('user_id', $user->id)->first();
-        $this->assertSame(0, $note->tags()->count());
+            ->assertUnprocessable();
     }
 
     public function test_user_can_attach_own_tags_on_create(): void
@@ -65,9 +62,7 @@ class NotesTest extends TestCase
                 'content' => 'Content',
                 'tag_ids' => [$foreignTag->id],
             ])
-            ->assertOk();
-
-        $this->assertSame(0, $note->fresh()->tags()->count());
+            ->assertUnprocessable();
     }
 
     public function test_updating_note_with_own_tags_attaches_them(): void

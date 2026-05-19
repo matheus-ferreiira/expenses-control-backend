@@ -24,6 +24,7 @@ class Habit extends Model
         'description',
         'frequency_type',
         'target_frequency',
+        'target_days',
         'color',
         'icon',
         'start_date',
@@ -33,6 +34,7 @@ class Habit extends Model
     protected $casts = [
         'frequency_type' => FrequencyType::class,
         'target_frequency' => 'integer',
+        'target_days' => 'array',
         'start_date' => 'date',
         'archived_at' => 'datetime',
     ];

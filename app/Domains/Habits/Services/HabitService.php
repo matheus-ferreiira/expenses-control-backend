@@ -58,6 +58,7 @@ final class HabitService
             'description' => $dto->description,
             'frequency_type' => $dto->frequencyType,
             'target_frequency' => $dto->targetFrequency,
+            'target_days' => $dto->targetDays ?: null,
             'color' => $dto->color,
             'icon' => $dto->icon,
         ]);

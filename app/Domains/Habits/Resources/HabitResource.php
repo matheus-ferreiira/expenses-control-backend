@@ -17,7 +17,7 @@ class HabitResource extends JsonResource
             'category' => $this->category,
             'description' => $this->description,
             'frequency' => $this->frequency_type?->value,
-            'target_days' => [],
+            'target_days' => $this->target_days ?? [],
             'color' => $this->color,
             'icon' => $this->icon,
             'is_active' => $this->archived_at === null,
