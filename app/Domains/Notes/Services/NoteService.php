@@ -9,6 +9,7 @@ use App\Domains\Notes\Models\Note;
 use App\Domains\Notes\Models\NoteTag;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Collection;
 
 final class NoteService
 {

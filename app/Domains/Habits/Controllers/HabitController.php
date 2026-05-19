@@ -113,7 +113,7 @@ class HabitController extends Controller
     public function heatmap(Request $request, Habit $habit): JsonResponse
     {
         $this->authorize('view', $habit);
-        $days = (int) $request->query('days', 365);
+        $days = min((int) $request->query('days', 365), 730);
 
         return $this->success($this->habitService->getHeatmap($habit, $days));
     }
