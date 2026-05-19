@@ -5,6 +5,7 @@ namespace App\Domains\Goals\Controllers;
 use App\Domains\Goals\DTOs\GoalDTO;
 use App\Domains\Goals\Models\Goal;
 use App\Domains\Goals\Requests\StoreGoalRequest;
+use App\Domains\Goals\Requests\UpdateGoalProgressRequest;
 use App\Domains\Goals\Requests\UpdateGoalRequest;
 use App\Domains\Goals\Resources\GoalResource;
 use App\Domains\Goals\Services\GoalService;
@@ -55,11 +56,10 @@ class GoalController extends Controller
         return $this->noContent();
     }
 
-    public function updateProgress(Request $request, Goal $goal): JsonResponse
+    public function updateProgress(UpdateGoalProgressRequest $request, Goal $goal): JsonResponse
     {
         $this->authorize('update', $goal);
-        $validated = $request->validate(['current_amount' => ['required', 'numeric', 'min:0']]);
-        $goal = $this->goalService->updateProgress($goal, (float) $validated['current_amount']);
+        $goal = $this->goalService->updateProgress($goal, (float) $request->validated()['current_amount']);
 
         return $this->success(new GoalResource($goal), 'Progress updated');
     }
