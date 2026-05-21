@@ -30,8 +30,6 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-di
 
 COPY . .
 
-RUN php artisan optimize
-
 EXPOSE 8000
 
-CMD php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}
+CMD php artisan optimize && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}
