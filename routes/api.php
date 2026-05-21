@@ -21,6 +21,12 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
 
+    // Google OAuth — no throttle, stateless redirect
+    Route::prefix('auth')->group(function () {
+        Route::get('google/redirect', [AuthController::class, 'googleRedirect']);
+        Route::get('google/callback', [AuthController::class, 'googleCallback']);
+    });
+
     // Auth - public routes
     Route::prefix('auth')->middleware('throttle:10,1')->group(function () {
         Route::post('register', [AuthController::class, 'register']);

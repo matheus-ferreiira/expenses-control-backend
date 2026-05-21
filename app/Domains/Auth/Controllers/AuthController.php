@@ -2,6 +2,7 @@
 
 namespace App\Domains\Auth\Controllers;
 
+use App\Domains\Auth\DTOs\GoogleAuthDTO;
 use App\Domains\Auth\DTOs\LoginDTO;
 use App\Domains\Auth\DTOs\RegisterDTO;
 use App\Domains\Auth\Requests\ForgotPasswordRequest;
@@ -13,7 +14,10 @@ use App\Domains\Auth\Services\AuthService;
 use App\Http\Controllers\Controller;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Laravel\Socialite\Facades\Socialite;
+use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirectResponse;
 
 class AuthController extends Controller
 {
@@ -73,6 +77,27 @@ class AuthController extends Controller
         $this->authService->sendPasswordResetLink($request->validated('email'));
 
         return $this->success(message: 'If that email is registered, a reset link has been sent');
+    }
+
+    public function googleRedirect(): SymfonyRedirectResponse
+    {
+        return Socialite::driver('google')->stateless()->redirect();
+    }
+
+    public function googleCallback(): RedirectResponse
+    {
+        $frontendUrl = rtrim(env('FRONTEND_URL', 'http://localhost:5173'), '/');
+
+        try {
+            $googleUser = Socialite::driver('google')->stateless()->user();
+            $result = $this->authService->authenticateWithGoogle(
+                GoogleAuthDTO::fromSocialite($googleUser)
+            );
+
+            return redirect("{$frontendUrl}/auth/google/callback?token={$result['token']}");
+        } catch (\Exception) {
+            return redirect("{$frontendUrl}/login?error=google_auth_failed");
+        }
     }
 
     public function resetPassword(ResetPasswordRequest $request): JsonResponse

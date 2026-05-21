@@ -4,6 +4,8 @@ namespace App\Domains\Auth\Services;
 
 use App\Domains\Auth\Actions\LoginAction;
 use App\Domains\Auth\Actions\RegisterAction;
+use App\Domains\Auth\Actions\SocialiteAuthAction;
+use App\Domains\Auth\DTOs\GoogleAuthDTO;
 use App\Domains\Auth\DTOs\LoginDTO;
 use App\Domains\Auth\DTOs\RegisterDTO;
 use App\Models\User;
@@ -15,6 +17,7 @@ final class AuthService
     public function __construct(
         private readonly LoginAction $loginAction,
         private readonly RegisterAction $registerAction,
+        private readonly SocialiteAuthAction $socialiteAuthAction,
     ) {}
 
     public function register(RegisterDTO $dto): array
@@ -48,6 +51,14 @@ final class AuthService
         $status = Password::sendResetLink(['email' => $email]);
 
         return $status === Password::RESET_LINK_SENT;
+    }
+
+    public function authenticateWithGoogle(GoogleAuthDTO $dto): array
+    {
+        $user = $this->socialiteAuthAction->execute($dto);
+        $token = $user->createToken('google-token')->plainTextToken;
+
+        return ['user' => $user, 'token' => $token];
     }
 
     public function resetPassword(string $token, string $email, string $password): bool
