@@ -5,6 +5,7 @@ namespace Tests\Feature\Tasks;
 use App\Domains\Tasks\Enums\TaskPriority;
 use App\Domains\Tasks\Models\Subtask;
 use App\Domains\Tasks\Models\Task;
+use App\Domains\Tasks\Models\TaskLabel;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -215,7 +216,7 @@ class TasksTest extends TestCase
         $owner = User::factory()->create();
         $attacker = User::factory()->create();
 
-        $otherLabel = \App\Domains\Tasks\Models\TaskLabel::factory()->create(['user_id' => $owner->id]);
+        $otherLabel = TaskLabel::factory()->create(['user_id' => $owner->id]);
 
         $response = $this->actingAs($attacker, 'sanctum')
             ->postJson('/api/v1/tasks', [

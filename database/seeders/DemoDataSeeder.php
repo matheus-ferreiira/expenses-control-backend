@@ -20,7 +20,6 @@ use App\Domains\Tasks\Enums\TaskPriority;
 use App\Domains\Tasks\Enums\TaskStatus;
 use App\Domains\Tasks\Models\Task;
 use App\Models\User;
-use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 
 class DemoDataSeeder extends Seeder
@@ -70,13 +69,13 @@ class DemoDataSeeder extends Seeder
 
         foreach ($habits as $data) {
             $habit = Habit::create([
-                'user_id'          => $user->id,
-                'name'             => $data['name'],
-                'category'         => $data['category'],
-                'frequency_type'   => $data['frequency'],
+                'user_id' => $user->id,
+                'name' => $data['name'],
+                'category' => $data['category'],
+                'frequency_type' => $data['frequency'],
                 'target_frequency' => 1,
-                'color'            => $data['color'],
-                'start_date'       => now()->subDays(60),
+                'color' => $data['color'],
+                'start_date' => now()->subDays(60),
             ]);
 
             // Generate logs for past 45 days based on completion rate
@@ -93,7 +92,7 @@ class DemoDataSeeder extends Seeder
 
                 if (rand(1, 100) <= $completionRate * 100) {
                     HabitLog::firstOrCreate([
-                        'habit_id'       => $habit->id,
+                        'habit_id' => $habit->id,
                         'completed_date' => $date,
                     ]);
                 }
@@ -136,12 +135,12 @@ class DemoDataSeeder extends Seeder
 
         foreach ($tasks as $i => $data) {
             Task::create([
-                'user_id'      => $user->id,
-                'title'        => $data['title'],
-                'priority'     => $data['priority'],
-                'status'       => $data['status'],
-                'due_date'     => $data['due'],
-                'position'     => ($i + 1) * 10,
+                'user_id' => $user->id,
+                'title' => $data['title'],
+                'priority' => $data['priority'],
+                'status' => $data['status'],
+                'due_date' => $data['due'],
+                'position' => ($i + 1) * 10,
                 'completed_at' => $data['status'] === TaskStatus::Completed ? now()->subDays(rand(1, 14)) : null,
             ]);
         }
@@ -157,38 +156,38 @@ class DemoDataSeeder extends Seeder
 
         // Conta corrente
         $checking = BankAccount::create([
-            'user_id'   => $user->id,
-            'name'      => 'Conta Corrente',
+            'user_id' => $user->id,
+            'name' => 'Conta Corrente',
             'bank_name' => 'Nubank',
-            'type'      => AccountType::Checking,
-            'balance'   => 4850.00,
-            'currency'  => 'BRL',
-            'color'     => '#818cf8',
+            'type' => AccountType::Checking,
+            'balance' => 4850.00,
+            'currency' => 'BRL',
+            'color' => '#818cf8',
             'is_active' => true,
         ]);
 
         // Poupança
         $savings = BankAccount::create([
-            'user_id'   => $user->id,
-            'name'      => 'Poupança',
+            'user_id' => $user->id,
+            'name' => 'Poupança',
             'bank_name' => 'Caixa Econômica',
-            'type'      => AccountType::Savings,
-            'balance'   => 18300.00,
-            'currency'  => 'BRL',
-            'color'     => '#34d399',
+            'type' => AccountType::Savings,
+            'balance' => 18300.00,
+            'currency' => 'BRL',
+            'color' => '#34d399',
             'is_active' => true,
         ]);
 
         // Cartão de crédito
         CreditCard::create([
-            'user_id'         => $user->id,
+            'user_id' => $user->id,
             'bank_account_id' => $checking->id,
-            'name'            => 'Nubank Mastercard',
-            'limit_amount'    => 8000.00,
-            'closing_day'     => 20,
-            'due_day'         => 27,
-            'color'           => '#a855f7',
-            'is_active'       => true,
+            'name' => 'Nubank Mastercard',
+            'limit_amount' => 8000.00,
+            'closing_day' => 20,
+            'due_day' => 27,
+            'color' => '#a855f7',
+            'is_active' => true,
         ]);
 
         // Transações da conta corrente — últimos 6 meses
@@ -217,22 +216,22 @@ class DemoDataSeeder extends Seeder
 
             // Salário no dia 5
             Transaction::create([
-                'user_id'          => $user->id,
-                'account_id'       => $checking->id,
-                'type'             => TransactionType::Income,
-                'amount'           => 5500.00,
-                'description'      => 'Salário',
+                'user_id' => $user->id,
+                'account_id' => $checking->id,
+                'type' => TransactionType::Income,
+                'amount' => 5500.00,
+                'description' => 'Salário',
                 'transaction_date' => $monthStart->copy()->addDays(4)->toDateString(),
             ]);
 
             // Freelance esporádico (70% dos meses)
             if (rand(1, 10) <= 7) {
                 Transaction::create([
-                    'user_id'          => $user->id,
-                    'account_id'       => $checking->id,
-                    'type'             => TransactionType::Income,
-                    'amount'           => rand(500, 2500),
-                    'description'      => 'Freelance',
+                    'user_id' => $user->id,
+                    'account_id' => $checking->id,
+                    'type' => TransactionType::Income,
+                    'amount' => rand(500, 2500),
+                    'description' => 'Freelance',
                     'transaction_date' => $monthStart->copy()->addDays(rand(10, 25))->toDateString(),
                 ]);
             }
@@ -242,11 +241,11 @@ class DemoDataSeeder extends Seeder
                 for ($f = 0; $f < $cat['freq']; $f++) {
                     $day = rand(1, 28);
                     Transaction::create([
-                        'user_id'          => $user->id,
-                        'account_id'       => $checking->id,
-                        'type'             => TransactionType::Expense,
-                        'amount'           => rand($cat['min'], $cat['max']),
-                        'description'      => $cat['desc'],
+                        'user_id' => $user->id,
+                        'account_id' => $checking->id,
+                        'type' => TransactionType::Expense,
+                        'amount' => rand($cat['min'], $cat['max']),
+                        'description' => $cat['desc'],
                         'transaction_date' => $monthStart->copy()->addDays($day - 1)->toDateString(),
                     ]);
                 }
@@ -256,19 +255,19 @@ class DemoDataSeeder extends Seeder
             if (rand(1, 10) <= 8) {
                 $transferAmount = rand(200, 800);
                 Transaction::create([
-                    'user_id'          => $user->id,
-                    'account_id'       => $checking->id,
-                    'type'             => TransactionType::Expense,
-                    'amount'           => $transferAmount,
-                    'description'      => 'Transferência — Poupança',
+                    'user_id' => $user->id,
+                    'account_id' => $checking->id,
+                    'type' => TransactionType::Expense,
+                    'amount' => $transferAmount,
+                    'description' => 'Transferência — Poupança',
                     'transaction_date' => $monthStart->copy()->addDays(9)->toDateString(),
                 ]);
                 Transaction::create([
-                    'user_id'          => $user->id,
-                    'account_id'       => $savings->id,
-                    'type'             => TransactionType::Income,
-                    'amount'           => $transferAmount,
-                    'description'      => 'Transferência recebida',
+                    'user_id' => $user->id,
+                    'account_id' => $savings->id,
+                    'type' => TransactionType::Income,
+                    'amount' => $transferAmount,
+                    'description' => 'Transferência recebida',
                     'transaction_date' => $monthStart->copy()->addDays(9)->toDateString(),
                 ]);
             }
@@ -285,63 +284,63 @@ class DemoDataSeeder extends Seeder
 
         $goals = [
             [
-                'title'          => 'Reserva de emergência',
-                'type'           => GoalType::Financial,
-                'status'         => GoalStatus::Active,
-                'target_amount'  => 30000.00,
+                'title' => 'Reserva de emergência',
+                'type' => GoalType::Financial,
+                'status' => GoalStatus::Active,
+                'target_amount' => 30000.00,
                 'current_amount' => 8300.00,
-                'target_date'    => now()->addMonths(18)->toDateString(),
-                'description'    => '6 meses de gastos mensais',
+                'target_date' => now()->addMonths(18)->toDateString(),
+                'description' => '6 meses de gastos mensais',
             ],
             [
-                'title'          => 'Viagem para a Europa',
-                'type'           => GoalType::Personal,
-                'status'         => GoalStatus::Active,
-                'target_amount'  => 15000.00,
+                'title' => 'Viagem para a Europa',
+                'type' => GoalType::Personal,
+                'status' => GoalStatus::Active,
+                'target_amount' => 15000.00,
                 'current_amount' => 3200.00,
-                'target_date'    => now()->addMonths(12)->toDateString(),
-                'description'    => 'Portugal, Espanha e França',
+                'target_date' => now()->addMonths(12)->toDateString(),
+                'description' => 'Portugal, Espanha e França',
             ],
             [
-                'title'          => 'Carro novo',
-                'type'           => GoalType::Financial,
-                'status'         => GoalStatus::Active,
-                'target_amount'  => 60000.00,
+                'title' => 'Carro novo',
+                'type' => GoalType::Financial,
+                'status' => GoalStatus::Active,
+                'target_amount' => 60000.00,
                 'current_amount' => 14500.00,
-                'target_date'    => now()->addMonths(36)->toDateString(),
-                'description'    => null,
+                'target_date' => now()->addMonths(36)->toDateString(),
+                'description' => null,
             ],
             [
-                'title'          => 'Curso de inglês avançado',
-                'type'           => GoalType::Learning,
-                'status'         => GoalStatus::Completed,
-                'target_amount'  => 2400.00,
+                'title' => 'Curso de inglês avançado',
+                'type' => GoalType::Learning,
+                'status' => GoalStatus::Completed,
+                'target_amount' => 2400.00,
                 'current_amount' => 2400.00,
-                'target_date'    => now()->subMonths(1)->toDateString(),
-                'description'    => 'Nivel C1',
+                'target_date' => now()->subMonths(1)->toDateString(),
+                'description' => 'Nivel C1',
             ],
             [
-                'title'          => 'Perder 8kg',
-                'type'           => GoalType::Health,
-                'status'         => GoalStatus::Active,
-                'target_amount'  => 8.00,
+                'title' => 'Perder 8kg',
+                'type' => GoalType::Health,
+                'status' => GoalStatus::Active,
+                'target_amount' => 8.00,
                 'current_amount' => 3.50,
-                'target_date'    => now()->addMonths(4)->toDateString(),
-                'description'    => 'Meta de saúde para 2026',
+                'target_date' => now()->addMonths(4)->toDateString(),
+                'description' => 'Meta de saúde para 2026',
             ],
         ];
 
         foreach ($goals as $data) {
             Goal::create([
-                'user_id'        => $user->id,
-                'title'          => $data['title'],
-                'type'           => $data['type'],
-                'status'         => $data['status'],
-                'target_amount'  => $data['target_amount'],
+                'user_id' => $user->id,
+                'title' => $data['title'],
+                'type' => $data['type'],
+                'status' => $data['status'],
+                'target_amount' => $data['target_amount'],
                 'current_amount' => $data['current_amount'],
-                'target_date'    => $data['target_date'],
-                'description'    => $data['description'],
-                'completed_at'   => $data['status'] === GoalStatus::Completed ? now()->subMonth() : null,
+                'target_date' => $data['target_date'],
+                'description' => $data['description'],
+                'completed_at' => $data['status'] === GoalStatus::Completed ? now()->subMonth() : null,
             ]);
         }
     }
@@ -374,13 +373,13 @@ class DemoDataSeeder extends Seeder
             $isAllDay = $data['allDay'] ?? false;
 
             CalendarEvent::create([
-                'user_id'     => $user->id,
-                'title'       => $data['title'],
-                'start_date'  => $isAllDay ? $start->toDateString() : $start,
-                'end_date'    => $isAllDay ? $start->toDateString() : $start->copy()->addMinutes($data['duration']),
-                'is_all_day'  => $isAllDay,
-                'color'       => $data['color'],
-                'source'      => EventSource::Manual,
+                'user_id' => $user->id,
+                'title' => $data['title'],
+                'start_date' => $isAllDay ? $start->toDateString() : $start,
+                'end_date' => $isAllDay ? $start->toDateString() : $start->copy()->addMinutes($data['duration']),
+                'is_all_day' => $isAllDay,
+                'color' => $data['color'],
+                'source' => EventSource::Manual,
             ]);
         }
     }
@@ -395,49 +394,49 @@ class DemoDataSeeder extends Seeder
 
         $notes = [
             [
-                'title'       => 'Ideias para novos projetos',
-                'content'     => "## Projetos em mente\n\n- App de controle de gastos com IA\n- Sistema de agendamento para freelancers\n- Plugin Obsidian para GTD\n\n## Próximos passos\n\nEscolher um projeto e definir MVP até fim do mês.",
-                'is_pinned'   => true,
+                'title' => 'Ideias para novos projetos',
+                'content' => "## Projetos em mente\n\n- App de controle de gastos com IA\n- Sistema de agendamento para freelancers\n- Plugin Obsidian para GTD\n\n## Próximos passos\n\nEscolher um projeto e definir MVP até fim do mês.",
+                'is_pinned' => true,
                 'is_favorite' => true,
             ],
             [
-                'title'       => 'Recursos de estudo',
-                'content'     => "## Livros\n- The Pragmatic Programmer\n- Clean Architecture (ainda lendo)\n- Atomic Habits — CONCLUÍDO ✓\n\n## Cursos online\n- Vue Mastery — Vue 3 Composition API\n- Laracasts — Laravel 12 From Scratch",
-                'is_pinned'   => true,
+                'title' => 'Recursos de estudo',
+                'content' => "## Livros\n- The Pragmatic Programmer\n- Clean Architecture (ainda lendo)\n- Atomic Habits — CONCLUÍDO ✓\n\n## Cursos online\n- Vue Mastery — Vue 3 Composition API\n- Laracasts — Laravel 12 From Scratch",
+                'is_pinned' => true,
                 'is_favorite' => false,
             ],
             [
-                'title'       => 'Notas da reunião — 12/05',
-                'content'     => "**Participantes:** Equipe de produto\n\n**Decisões:**\n- Lançar versão beta em junho\n- Priorizar mobile-first para próximo sprint\n- Revisar estrutura de preços\n\n**Action items:**\n- [ ] Matheus: Criar mockups do onboarding\n- [ ] Time: Review de backlog quinta-feira",
-                'is_pinned'   => false,
+                'title' => 'Notas da reunião — 12/05',
+                'content' => "**Participantes:** Equipe de produto\n\n**Decisões:**\n- Lançar versão beta em junho\n- Priorizar mobile-first para próximo sprint\n- Revisar estrutura de preços\n\n**Action items:**\n- [ ] Matheus: Criar mockups do onboarding\n- [ ] Time: Review de backlog quinta-feira",
+                'is_pinned' => false,
                 'is_favorite' => false,
             ],
             [
-                'title'       => 'Receitas saudáveis',
-                'content'     => "## Café da manhã\n- Aveia com frutas e mel\n- Omelete de legumes\n\n## Almoço\n- Bowl de quinoa com frango\n- Salada colorida com azeite\n\n## Jantar\n- Sopa de legumes\n- Peixe grelhado com batata doce",
-                'is_pinned'   => false,
+                'title' => 'Receitas saudáveis',
+                'content' => "## Café da manhã\n- Aveia com frutas e mel\n- Omelete de legumes\n\n## Almoço\n- Bowl de quinoa com frango\n- Salada colorida com azeite\n\n## Jantar\n- Sopa de legumes\n- Peixe grelhado com batata doce",
+                'is_pinned' => false,
                 'is_favorite' => true,
             ],
             [
-                'title'       => 'Senhas e acessos (dev)',
-                'content'     => "**ATENÇÃO: Use um gerenciador de senhas real em produção!**\n\nAmbiente de desenvolvimento:\n- Staging: https://staging.vault.app\n- DB local: postgres://localhost/productivity_dev\n- Redis: localhost:6379",
-                'is_pinned'   => false,
+                'title' => 'Senhas e acessos (dev)',
+                'content' => "**ATENÇÃO: Use um gerenciador de senhas real em produção!**\n\nAmbiente de desenvolvimento:\n- Staging: https://staging.vault.app\n- DB local: postgres://localhost/productivity_dev\n- Redis: localhost:6379",
+                'is_pinned' => false,
                 'is_favorite' => false,
             ],
             [
-                'title'       => 'Lista de compras do mês',
-                'content'     => "## Supermercado\n- [ ] Aveia\n- [ ] Azeite extra virgem\n- [x] Detergente\n- [ ] Papel toalha\n- [ ] Frutas da estação\n\n## Farmácia\n- [x] Vitamina D\n- [ ] Filtro solar FPS 70",
-                'is_pinned'   => false,
+                'title' => 'Lista de compras do mês',
+                'content' => "## Supermercado\n- [ ] Aveia\n- [ ] Azeite extra virgem\n- [x] Detergente\n- [ ] Papel toalha\n- [ ] Frutas da estação\n\n## Farmácia\n- [x] Vitamina D\n- [ ] Filtro solar FPS 70",
+                'is_pinned' => false,
                 'is_favorite' => false,
             ],
         ];
 
         foreach ($notes as $data) {
             Note::create([
-                'user_id'    => $user->id,
-                'title'      => $data['title'],
-                'content'    => $data['content'],
-                'is_pinned'  => $data['is_pinned'],
+                'user_id' => $user->id,
+                'title' => $data['title'],
+                'content' => $data['content'],
+                'is_pinned' => $data['is_pinned'],
                 'is_favorite' => $data['is_favorite'],
             ]);
         }
