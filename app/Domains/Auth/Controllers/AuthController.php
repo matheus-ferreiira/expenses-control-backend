@@ -16,6 +16,7 @@ use Illuminate\Auth\AuthenticationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Laravel\Socialite\Facades\Socialite;
 use Symfony\Component\HttpFoundation\RedirectResponse as SymfonyRedirectResponse;
 
@@ -95,7 +96,12 @@ class AuthController extends Controller
             );
 
             return redirect("{$frontendUrl}/auth/google/callback?token={$result['token']}");
-        } catch (\Exception) {
+        } catch (\Exception $e) {
+            Log::error('Google OAuth callback failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return redirect("{$frontendUrl}/login?error=google_auth_failed");
         }
     }
