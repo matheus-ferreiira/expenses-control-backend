@@ -419,7 +419,7 @@ class DemoDataSeeder extends Seeder
             ],
             [
                 'title' => 'Senhas e acessos (dev)',
-                'content' => "**ATENÇÃO: Use um gerenciador de senhas real em produção!**\n\nAmbiente de desenvolvimento:\n- Staging: https://staging.vault.app\n- DB local: postgres://localhost/productivity_dev\n- Redis: localhost:6379",
+                'content' => "**ATENÇÃO: Use um gerenciador de senhas real em produção!**\n\nAmbiente de desenvolvimento:\n- Staging: https://staging.vault.app\n- DB local: mysql://root@localhost/productivy\n- Redis: localhost:6379",
                 'is_pinned' => false,
                 'is_favorite' => false,
             ],

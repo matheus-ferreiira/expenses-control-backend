@@ -244,7 +244,7 @@ enum TaskStatus: string
 - **FKs:** `$table->foreignUuid('user_id')->constrained()->cascadeOnDelete()`
 - **Soft deletes:** Em todas as entidades principais
 - **Valores monetários:** `decimal(15, 2)` — nunca `float`
-- **JSON:** `jsonb` no PostgreSQL (melhor performance)
+- **JSON:** `json` no MySQL
 - **Índices:** Compostos nas colunas mais filtradas juntas
 
 ### Atualização de Saldo

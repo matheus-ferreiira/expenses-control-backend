@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('color', 20)->nullable();
             $table->string('source', 20)->default('manual');
             $table->string('external_id')->nullable();
-            $table->jsonb('metadata')->nullable();
+            $table->json('metadata')->nullable();
             $table->softDeletes();
             $table->timestamps();
 

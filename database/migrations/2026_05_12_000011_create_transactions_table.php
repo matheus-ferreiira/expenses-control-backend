@@ -20,7 +20,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->date('transaction_date');
             $table->boolean('is_recurring')->default(false);
-            $table->jsonb('recurrence_config')->nullable();
+            $table->json('recurrence_config')->nullable();
             $table->smallInteger('installment_number')->nullable();
             $table->smallInteger('total_installments')->nullable();
             $table->uuid('installment_group_id')->nullable();

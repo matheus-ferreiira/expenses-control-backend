@@ -18,7 +18,7 @@ return new class extends Migration
             $table->timestamp('due_date')->nullable();
             $table->timestamp('completed_at')->nullable();
             $table->string('recurrence_type', 20)->default('none');
-            $table->jsonb('recurrence_config')->nullable();
+            $table->json('recurrence_config')->nullable();
             $table->integer('position')->default(0);
             $table->boolean('is_archived')->default(false);
             $table->softDeletes();

@@ -1,7 +1,7 @@
 # CLAUDE.md — Backend (Laravel 12)
 
 ## Stack
-- **PHP 8.3** | **Laravel 12** | **PostgreSQL** | **Sanctum** (tokens)
+- **PHP 8.3** | **Laravel 12** | **MySQL 8.0** | **Sanctum** (tokens)
 - Testes: PHPUnit | Linting: Laravel Pint | Logs: Pail
 
 ## Arquitetura

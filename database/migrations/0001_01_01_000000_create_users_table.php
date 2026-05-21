@@ -18,7 +18,7 @@ return new class extends Migration
             $table->string('avatar')->nullable();
             $table->string('locale', 10)->default('pt_BR');
             $table->string('timezone', 60)->default('America/Sao_Paulo');
-            $table->jsonb('settings')->nullable();
+            $table->json('settings')->nullable();
             $table->rememberToken();
             $table->softDeletes();
             $table->timestamps();

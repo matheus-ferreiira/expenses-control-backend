@@ -8,7 +8,7 @@ API REST para aplicação pessoal de controle financeiro, tarefas, hábitos, met
 |-----------|--------|
 | PHP | ^8.3 |
 | Laravel | ^12.0 |
-| PostgreSQL | 15+ |
+| MySQL | 8.0+ |
 | Sanctum | ^4.0 (token auth) |
 | Socialite | ^5.0 (Google OAuth - futuro) |
 
@@ -16,7 +16,7 @@ API REST para aplicação pessoal de controle financeiro, tarefas, hábitos, met
 
 - PHP 8.3+
 - Composer
-- PostgreSQL 15+
+- MySQL 8.0+
 - Node.js 20+ (para assets)
 
 ## Instalação
@@ -30,11 +30,11 @@ cp .env.example .env
 php artisan key:generate
 
 # 3. Configurar banco no .env
-# DB_CONNECTION=pgsql
+# DB_CONNECTION=mysql
 # DB_HOST=127.0.0.1
-# DB_PORT=5432
-# DB_DATABASE=productivity_control
-# DB_USERNAME=postgres
+# DB_PORT=3306
+# DB_DATABASE=productivy
+# DB_USERNAME=root
 # DB_PASSWORD=
 
 # 4. Criar banco e rodar migrations
