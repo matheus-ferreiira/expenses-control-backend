@@ -32,32 +32,32 @@ class BankAccountController extends Controller
         return $this->created(new BankAccountResource($account), 'Account created');
     }
 
-    public function show(Request $request, BankAccount $bankAccount): JsonResponse
+    public function show(Request $request, BankAccount $account): JsonResponse
     {
-        $this->authorize('view', $bankAccount);
+        $this->authorize('view', $account);
 
-        return $this->success(new BankAccountResource($bankAccount->load('creditCards')));
+        return $this->success(new BankAccountResource($account->load('creditCards')));
     }
 
-    public function update(UpdateBankAccountRequest $request, BankAccount $bankAccount): JsonResponse
+    public function update(UpdateBankAccountRequest $request, BankAccount $account): JsonResponse
     {
-        $this->authorize('update', $bankAccount);
+        $this->authorize('update', $account);
 
         $validated = $request->validated();
         // Preserve the current balance if not explicitly provided in the request
         if (! array_key_exists('balance', $validated)) {
-            $validated['balance'] = (float) $bankAccount->balance;
+            $validated['balance'] = (float) $account->balance;
         }
 
-        $account = $this->service->update($bankAccount, BankAccountDTO::fromArray($validated));
+        $updated = $this->service->update($account, BankAccountDTO::fromArray($validated));
 
-        return $this->success(new BankAccountResource($account), 'Account updated');
+        return $this->success(new BankAccountResource($updated), 'Account updated');
     }
 
-    public function destroy(Request $request, BankAccount $bankAccount): JsonResponse
+    public function destroy(Request $request, BankAccount $account): JsonResponse
     {
-        $this->authorize('delete', $bankAccount);
-        $this->service->delete($bankAccount);
+        $this->authorize('delete', $account);
+        $this->service->delete($account);
 
         return $this->noContent();
     }
