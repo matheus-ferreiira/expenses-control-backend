@@ -2,6 +2,7 @@
 
 namespace App\Domains\Finance\Models;
 
+use App\Domains\Finance\Enums\TransactionStatus;
 use App\Domains\Finance\Enums\TransactionType;
 use App\Models\User;
 use Database\Factories\TransactionFactory;
@@ -28,6 +29,8 @@ class Transaction extends Model
         'transaction_date',
         'is_recurring',
         'recurrence_config',
+        'status',
+        'recurrence_group_id',
         'installment_number',
         'total_installments',
         'installment_group_id',
@@ -35,6 +38,7 @@ class Transaction extends Model
 
     protected $casts = [
         'type' => TransactionType::class,
+        'status' => TransactionStatus::class,
         'amount' => 'decimal:2',
         'transaction_date' => 'date',
         'is_recurring' => 'boolean',
@@ -92,5 +96,20 @@ class Transaction extends Model
     {
         return $query->whereYear('transaction_date', $year)
             ->whereMonth('transaction_date', $month);
+    }
+
+    public function scopeConfirmed(Builder $query): Builder
+    {
+        return $query->where('status', TransactionStatus::Confirmed->value);
+    }
+
+    public function scopePending(Builder $query): Builder
+    {
+        return $query->where('status', TransactionStatus::Pending->value);
+    }
+
+    public function isConfirmed(): bool
+    {
+        return $this->status === TransactionStatus::Confirmed;
     }
 }

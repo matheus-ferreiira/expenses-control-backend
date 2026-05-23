@@ -10,6 +10,7 @@ use App\Domains\Finance\Models\BankAccount;
 use App\Domains\Finance\Models\Transaction;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 final class TransactionService
@@ -53,7 +54,7 @@ final class TransactionService
         }
 
         if (! empty($filters['search'])) {
-            $query->where('description', 'ilike', "%{$filters['search']}%");
+            $query->where('description', 'like', "%{$filters['search']}%");
         }
 
         $allowedSorts = ['transaction_date', 'amount', 'description', 'created_at'];
@@ -79,7 +80,29 @@ final class TransactionService
     public function delete(Transaction $transaction): void
     {
         DB::transaction(function () use ($transaction) {
-            if ($transaction->account_id) {
+            if ($transaction->recurrence_group_id) {
+                // Cascade-delete all occurrences; only reverse balance for confirmed ones
+                /** @var Collection<int, Transaction> $group */
+                $group = Transaction::where('recurrence_group_id', $transaction->recurrence_group_id)->get();
+
+                foreach ($group as $occurrence) {
+                    if ($occurrence->isConfirmed() && $occurrence->account_id) {
+                        $account = BankAccount::find($occurrence->account_id);
+                        if ($account) {
+                            $delta = $occurrence->type === TransactionType::Income
+                                ? -$occurrence->amount
+                                : $occurrence->amount;
+                            $account->increment('balance', $delta);
+                        }
+                    }
+                    $occurrence->delete();
+                }
+
+                return;
+            }
+
+            // Normal single-transaction delete — only reverse balance if confirmed
+            if ($transaction->isConfirmed() && $transaction->account_id) {
                 $account = BankAccount::find($transaction->account_id);
                 if ($account) {
                     $delta = $transaction->type === TransactionType::Income
@@ -88,6 +111,7 @@ final class TransactionService
                     $account->increment('balance', $delta);
                 }
             }
+
             $transaction->delete();
         });
     }

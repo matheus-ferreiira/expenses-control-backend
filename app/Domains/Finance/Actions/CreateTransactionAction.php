@@ -3,6 +3,7 @@
 namespace App\Domains\Finance\Actions;
 
 use App\Domains\Finance\DTOs\TransactionDTO;
+use App\Domains\Finance\Enums\TransactionStatus;
 use App\Domains\Finance\Enums\TransactionType;
 use App\Domains\Finance\Models\BankAccount;
 use App\Domains\Finance\Models\Transaction;
@@ -13,10 +14,17 @@ use Illuminate\Support\Str;
 
 final class CreateTransactionAction
 {
+    /** Number of months to generate for recurring transactions (5 years). */
+    private const RECURRENCE_MONTHS = 60;
+
     public function execute(User $user, TransactionDTO $dto): Transaction|array
     {
         if ($dto->totalInstallments && $dto->totalInstallments > 1) {
             return $this->createInstallments($user, $dto);
+        }
+
+        if ($dto->isRecurring) {
+            return $this->createRecurring($user, $dto);
         }
 
         return DB::transaction(function () use ($user, $dto) {
@@ -30,13 +38,57 @@ final class CreateTransactionAction
                 'description' => $dto->description,
                 'notes' => $dto->notes,
                 'transaction_date' => $dto->transactionDate,
-                'is_recurring' => $dto->isRecurring,
-                'recurrence_config' => $dto->recurrenceConfig,
+                'is_recurring' => false,
+                'status' => TransactionStatus::Confirmed->value,
             ]);
 
             $this->updateAccountBalance($transaction);
 
             return $transaction->load(['category', 'account', 'card']);
+        });
+    }
+
+    /**
+     * Creates the current occurrence (confirmed) and 59 future occurrences (pending)
+     * for a recurring transaction — totalling 5 years.
+     * Only the confirmed occurrence affects the account balance.
+     */
+    private function createRecurring(User $user, TransactionDTO $dto): Transaction
+    {
+        return DB::transaction(function () use ($user, $dto) {
+            $groupId = (string) Str::uuid();
+            $baseDate = Carbon::parse($dto->transactionDate);
+            $first = null;
+
+            for ($i = 0; $i < self::RECURRENCE_MONTHS; $i++) {
+                $status = $i === 0
+                    ? TransactionStatus::Confirmed->value
+                    : TransactionStatus::Pending->value;
+
+                $transaction = Transaction::create([
+                    'user_id' => $user->id,
+                    'account_id' => $dto->accountId,
+                    'card_id' => $dto->cardId,
+                    'category_id' => $dto->categoryId,
+                    'type' => $dto->type,
+                    'amount' => $dto->amount,
+                    'description' => $dto->description,
+                    'notes' => $dto->notes,
+                    'transaction_date' => $baseDate->copy()->addMonths($i)->toDateString(),
+                    'is_recurring' => true,
+                    'recurrence_config' => $dto->recurrenceConfig,
+                    'recurrence_group_id' => $groupId,
+                    'status' => $status,
+                ]);
+
+                if ($i === 0) {
+                    // Only the first occurrence (confirmed) affects the balance
+                    $this->updateAccountBalance($transaction);
+                    $first = $transaction;
+                }
+            }
+
+            return $first->load(['category', 'account', 'card']);
         });
     }
 
@@ -64,6 +116,7 @@ final class CreateTransactionAction
                     'installment_number' => $i,
                     'total_installments' => $dto->totalInstallments,
                     'installment_group_id' => $groupId,
+                    'status' => TransactionStatus::Confirmed->value,
                 ]);
                 $transactions[] = $transaction;
             }

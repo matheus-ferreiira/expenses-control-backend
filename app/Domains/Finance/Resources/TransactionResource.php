@@ -21,6 +21,8 @@ class TransactionResource extends JsonResource
             'transaction_date' => $this->transaction_date?->toDateString(),
             'is_recurring' => $this->is_recurring,
             'recurrence_config' => $this->recurrence_config,
+            'status' => $this->status?->value,
+            'recurrence_group_id' => $this->recurrence_group_id,
             'installment_number' => $this->installment_number,
             'total_installments' => $this->total_installments,
             'installment_group_id' => $this->installment_group_id,
