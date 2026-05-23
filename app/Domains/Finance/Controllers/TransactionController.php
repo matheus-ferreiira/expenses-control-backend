@@ -47,7 +47,9 @@ class TransactionController extends Controller
     public function update(UpdateTransactionRequest $request, Transaction $transaction): JsonResponse
     {
         $this->authorize('update', $transaction);
-        $transaction = $this->service->update($transaction, TransactionDTO::fromArray($request->validated()));
+        $validated = $request->validated();
+        $scope = $validated['scope'] ?? 'this_only';
+        $transaction = $this->service->update($transaction, TransactionDTO::fromArray($validated), $scope);
 
         return $this->success(new TransactionResource($transaction), 'Transaction updated');
     }

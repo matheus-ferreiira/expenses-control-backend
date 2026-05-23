@@ -72,9 +72,9 @@ final class TransactionService
         return $this->createTransaction->execute($user, $dto);
     }
 
-    public function update(Transaction $transaction, TransactionDTO $dto): Transaction
+    public function update(Transaction $transaction, TransactionDTO $dto, string $scope = 'this_only'): Transaction
     {
-        return $this->updateTransaction->execute($transaction, $dto);
+        return $this->updateTransaction->execute($transaction, $dto, $scope);
     }
 
     public function delete(Transaction $transaction): void
