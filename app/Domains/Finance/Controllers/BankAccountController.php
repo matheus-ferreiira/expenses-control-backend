@@ -42,7 +42,14 @@ class BankAccountController extends Controller
     public function update(UpdateBankAccountRequest $request, BankAccount $bankAccount): JsonResponse
     {
         $this->authorize('update', $bankAccount);
-        $account = $this->service->update($bankAccount, BankAccountDTO::fromArray($request->validated()));
+
+        $validated = $request->validated();
+        // Preserve the current balance if not explicitly provided in the request
+        if (! array_key_exists('balance', $validated)) {
+            $validated['balance'] = (float) $bankAccount->balance;
+        }
+
+        $account = $this->service->update($bankAccount, BankAccountDTO::fromArray($validated));
 
         return $this->success(new BankAccountResource($account), 'Account updated');
     }

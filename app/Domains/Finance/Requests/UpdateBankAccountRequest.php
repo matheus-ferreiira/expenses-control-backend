@@ -14,6 +14,7 @@ class UpdateBankAccountRequest extends BaseFormRequest
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'type' => ['nullable', new Enum(AccountType::class)],
             'bank_name' => ['nullable', 'string', 'max:255'],
+            'balance' => ['sometimes', 'nullable', 'numeric'],
             'color' => ['nullable', 'string', 'max:20'],
             'is_active' => ['nullable', 'boolean'],
         ];
