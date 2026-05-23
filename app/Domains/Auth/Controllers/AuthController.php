@@ -82,7 +82,14 @@ class AuthController extends Controller
 
     public function googleRedirect(): SymfonyRedirectResponse
     {
-        return Socialite::driver('google')->stateless()->redirect();
+        $redirect = Socialite::driver('google')->stateless()->redirect();
+        Log::info('Google OAuth redirect', [
+            'redirect_uri' => config('services.google.redirect'),
+            'client_id' => substr((string) config('services.google.client_id'), 0, 20).'...',
+            'target_url' => $redirect->getTargetUrl(),
+        ]);
+
+        return $redirect;
     }
 
     public function googleCallback(): RedirectResponse
@@ -90,6 +97,14 @@ class AuthController extends Controller
         $frontendUrl = rtrim(env('FRONTEND_URL', 'http://localhost:5173'), '/');
 
         try {
+            // Log any error Google sent back (redirect_uri_mismatch, access_denied, etc.)
+            if (request()->has('error')) {
+                Log::error('Google OAuth: Google returned an error', [
+                    'error' => request()->query('error'),
+                    'error_description' => request()->query('error_description'),
+                ]);
+            }
+
             $googleUser = Socialite::driver('google')->stateless()->user();
             $result = $this->authService->authenticateWithGoogle(
                 GoogleAuthDTO::fromSocialite($googleUser)
@@ -99,7 +114,8 @@ class AuthController extends Controller
         } catch (\Exception $e) {
             Log::error('Google OAuth callback failed', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'google_error' => request()->query('error'),
+                'google_error_description' => request()->query('error_description'),
             ]);
 
             return redirect("{$frontendUrl}/login?error=google_auth_failed");
