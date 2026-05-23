@@ -20,6 +20,7 @@ class UpdateTransactionRequest extends BaseFormRequest
             'account_id' => ['nullable', 'uuid', Rule::exists('bank_accounts', 'id')->where('user_id', $this->user()->id)],
             'card_id' => ['nullable', 'uuid', Rule::exists('credit_cards', 'id')->where('user_id', $this->user()->id)],
             'category_id' => ['nullable', 'uuid', Rule::exists('transaction_categories', 'id')->where('user_id', $this->user()->id)],
+            'is_recurring' => ['sometimes', 'boolean'],
             'tag_ids' => ['sometimes', 'nullable', 'array'],
             'tag_ids.*' => ['uuid', Rule::exists('transaction_tags', 'id')->where('user_id', $this->user()->id)],
         ];
