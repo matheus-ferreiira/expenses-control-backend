@@ -18,6 +18,8 @@ final readonly class TransactionDTO
         public bool $isRecurring = false,
         public ?array $recurrenceConfig = null,
         public ?int $totalInstallments = null,
+        /** @var string[]|null */
+        public ?array $tagIds = null,
     ) {}
 
     public static function fromArray(array $data): self
@@ -34,6 +36,7 @@ final readonly class TransactionDTO
             isRecurring: (bool) ($data['is_recurring'] ?? false),
             recurrenceConfig: $data['recurrence_config'] ?? null,
             totalInstallments: $data['total_installments'] ?? null,
+            tagIds: $data['tag_ids'] ?? null,
         );
     }
 }

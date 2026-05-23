@@ -23,6 +23,8 @@ class StoreTransactionRequest extends BaseFormRequest
             'is_recurring' => ['nullable', 'boolean'],
             'recurrence_config' => ['nullable', 'array'],
             'total_installments' => ['nullable', 'integer', 'min:2', 'max:60'],
+            'tag_ids' => ['nullable', 'array'],
+            'tag_ids.*' => ['uuid', Rule::exists('transaction_tags', 'id')->where('user_id', $this->user()->id)],
         ];
     }
 }

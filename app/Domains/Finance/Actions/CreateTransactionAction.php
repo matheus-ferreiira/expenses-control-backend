@@ -42,9 +42,13 @@ final class CreateTransactionAction
                 'status' => TransactionStatus::Confirmed->value,
             ]);
 
+            if ($dto->tagIds) {
+                $transaction->tags()->sync($dto->tagIds);
+            }
+
             $this->updateAccountBalance($transaction);
 
-            return $transaction->load(['category', 'account', 'card']);
+            return $transaction->load(['category', 'account', 'card', 'tags']);
         });
     }
 
@@ -88,7 +92,7 @@ final class CreateTransactionAction
                 }
             }
 
-            return $first->load(['category', 'account', 'card']);
+            return $first->load(['category', 'account', 'card', 'tags']);
         });
     }
 

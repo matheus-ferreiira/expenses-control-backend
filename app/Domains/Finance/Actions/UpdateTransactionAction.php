@@ -28,9 +28,13 @@ final class UpdateTransactionAction
                 'recurrence_config' => $dto->recurrenceConfig,
             ]);
 
+            if ($dto->tagIds !== null) {
+                $transaction->tags()->sync($dto->tagIds);
+            }
+
             $this->applyAccountBalance($transaction);
 
-            return $transaction->load(['category', 'account', 'card']);
+            return $transaction->load(['category', 'account', 'card', 'tags']);
         });
     }
 

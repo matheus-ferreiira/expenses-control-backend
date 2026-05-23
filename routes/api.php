@@ -7,6 +7,7 @@ use App\Domains\Finance\Controllers\CreditCardController;
 use App\Domains\Finance\Controllers\FinanceReportController;
 use App\Domains\Finance\Controllers\TransactionCategoryController;
 use App\Domains\Finance\Controllers\TransactionController;
+use App\Domains\Finance\Controllers\TransactionTagController;
 use App\Domains\Goals\Controllers\GoalController;
 use App\Domains\Habits\Controllers\HabitController;
 use App\Domains\Notes\Controllers\NoteController;
@@ -108,6 +109,12 @@ Route::prefix('v1')->group(function () {
             Route::post('categories', [TransactionCategoryController::class, 'store']);
             Route::put('categories/{transactionCategory}', [TransactionCategoryController::class, 'update']);
             Route::delete('categories/{transactionCategory}', [TransactionCategoryController::class, 'destroy']);
+
+            // Transaction Tags
+            Route::get('tags', [TransactionTagController::class, 'index']);
+            Route::post('tags', [TransactionTagController::class, 'store']);
+            Route::put('tags/{transactionTag}', [TransactionTagController::class, 'update']);
+            Route::delete('tags/{transactionTag}', [TransactionTagController::class, 'destroy']);
 
             // Reports
             Route::prefix('reports')->group(function () {

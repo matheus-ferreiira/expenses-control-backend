@@ -29,6 +29,7 @@ class TransactionResource extends JsonResource
             'account' => new BankAccountResource($this->whenLoaded('account')),
             'card' => new CreditCardResource($this->whenLoaded('card')),
             'category' => new TransactionCategoryResource($this->whenLoaded('category')),
+            'tags' => TransactionTagResource::collection($this->whenLoaded('tags')),
             'created_at' => $this->created_at->toISOString(),
             'updated_at' => $this->updated_at->toISOString(),
         ];
