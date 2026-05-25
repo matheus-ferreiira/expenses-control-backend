@@ -57,6 +57,16 @@ final class TransactionService
             $query->where('description', 'like', "%{$filters['search']}%");
         }
 
+        // Filter by fix (recurring) transactions
+        if (array_key_exists('is_recurring', $filters) && $filters['is_recurring'] !== null && $filters['is_recurring'] !== '') {
+            $query->where('is_recurring', (bool) $filters['is_recurring']);
+        }
+
+        // Filter by status (confirmed | pending)
+        if (! empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+
         $allowedSorts = ['transaction_date', 'amount', 'description', 'created_at'];
         $sortBy = in_array($filters['sort_by'] ?? '', $allowedSorts)
             ? $filters['sort_by']

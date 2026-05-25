@@ -2,6 +2,7 @@
 
 namespace App\Domains\Finance\Requests;
 
+use App\Domains\Finance\Enums\TransactionStatus;
 use App\Domains\Finance\Enums\TransactionType;
 use App\Http\Requests\BaseFormRequest;
 use Illuminate\Validation\Rules\Enum;
@@ -23,6 +24,8 @@ class TransactionFilterRequest extends BaseFormRequest
             'sort_by' => ['nullable', 'in:transaction_date,amount,description,created_at'],
             'sort_direction' => ['nullable', 'in:asc,desc'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:500'],
+            'is_recurring' => ['nullable', 'boolean'],
+            'status' => ['nullable', new Enum(TransactionStatus::class)],
         ];
     }
 }

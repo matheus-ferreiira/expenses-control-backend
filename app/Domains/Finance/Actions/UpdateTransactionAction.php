@@ -3,13 +3,19 @@
 namespace App\Domains\Finance\Actions;
 
 use App\Domains\Finance\DTOs\TransactionDTO;
+use App\Domains\Finance\Enums\TransactionStatus;
 use App\Domains\Finance\Enums\TransactionType;
 use App\Domains\Finance\Models\BankAccount;
 use App\Domains\Finance\Models\Transaction;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 final class UpdateTransactionAction
 {
+    /** Number of months to generate when promoting a transaction to a fix series (5 years). */
+    private const RECURRENCE_MONTHS = 60;
+
     public function execute(Transaction $transaction, TransactionDTO $dto, string $scope = 'this_only'): Transaction
     {
         return DB::transaction(function () use ($transaction, $dto, $scope) {
@@ -27,6 +33,12 @@ final class UpdateTransactionAction
     {
         $this->reverseAccountBalance($transaction);
 
+        // Detect promotion to fix series: was non-recurring, now marked as recurring
+        $becomingRecurring = $dto->isRecurring && ! $transaction->is_recurring;
+        $recurrenceGroupId = $becomingRecurring
+            ? (string) Str::uuid()
+            : $transaction->recurrence_group_id;
+
         $transaction->update([
             'account_id' => $dto->accountId,
             'card_id' => $dto->cardId,
@@ -38,6 +50,7 @@ final class UpdateTransactionAction
             'transaction_date' => $dto->transactionDate,
             'is_recurring' => $dto->isRecurring,
             'recurrence_config' => $dto->recurrenceConfig,
+            'recurrence_group_id' => $recurrenceGroupId,
         ]);
 
         if ($dto->tagIds !== null) {
@@ -46,7 +59,39 @@ final class UpdateTransactionAction
 
         $this->applyAccountBalance($transaction);
 
+        // If transaction was just promoted to a fix series, generate the 59 future pending months
+        if ($becomingRecurring) {
+            $this->createFutureOccurrences($transaction, $dto, $recurrenceGroupId);
+        }
+
         return $transaction->load(['category', 'account', 'card', 'tags']);
+    }
+
+    /**
+     * Generates months 1..59 as pending occurrences for a transaction just promoted to a fix series.
+     * Month 0 (confirmed) is the existing transaction that was just updated.
+     */
+    private function createFutureOccurrences(Transaction $transaction, TransactionDTO $dto, string $groupId): void
+    {
+        $baseDate = Carbon::parse($dto->transactionDate);
+
+        for ($i = 1; $i < self::RECURRENCE_MONTHS; $i++) {
+            Transaction::create([
+                'user_id' => $transaction->user_id,
+                'account_id' => $dto->accountId,
+                'card_id' => $dto->cardId,
+                'category_id' => $dto->categoryId,
+                'type' => $dto->type,
+                'amount' => $dto->amount,
+                'description' => $dto->description,
+                'notes' => $dto->notes,
+                'transaction_date' => $baseDate->copy()->addMonths($i)->toDateString(),
+                'is_recurring' => true,
+                'recurrence_config' => $dto->recurrenceConfig,
+                'recurrence_group_id' => $groupId,
+                'status' => TransactionStatus::Pending->value,
+            ]);
+        }
     }
 
     // ── Bulk update (this_and_future | all) ───────────────────────────────────
