@@ -47,6 +47,7 @@ final class CreateTransactionAction
             }
 
             $this->updateAccountBalance($transaction);
+            $this->updateStreak($user);
 
             return $transaction->load(['category', 'account', 'card', 'tags']);
         });
@@ -86,8 +87,9 @@ final class CreateTransactionAction
                 ]);
 
                 if ($i === 0) {
-                    // Only the first occurrence (confirmed) affects the balance
+                    // Only the first occurrence (confirmed) affects the balance + streak
                     $this->updateAccountBalance($transaction);
+                    $this->updateStreak($user);
                     $first = $transaction;
                 }
             }
@@ -136,6 +138,42 @@ final class CreateTransactionAction
 
             return $transactions;
         });
+    }
+
+    /**
+     * Update user's transaction streak.
+     * - Same day as last: keep streak unchanged.
+     * - Yesterday: increment streak.
+     * - Any gap: reset to 1.
+     */
+    private function updateStreak(User $user): void
+    {
+        $today = Carbon::today();
+        $last = $user->last_transaction_date;
+
+        if ($last === null) {
+            $user->update(['current_streak' => 1, 'last_transaction_date' => $today->toDateString()]);
+
+            return;
+        }
+
+        $lastDate = Carbon::parse($last);
+
+        if ($lastDate->isSameDay($today)) {
+            // Already counted today — no change
+            return;
+        }
+
+        if ($lastDate->isSameDay($today->copy()->subDay())) {
+            // Yesterday — extend streak
+            $user->update([
+                'current_streak' => $user->current_streak + 1,
+                'last_transaction_date' => $today->toDateString(),
+            ]);
+        } else {
+            // Gap — reset
+            $user->update(['current_streak' => 1, 'last_transaction_date' => $today->toDateString()]);
+        }
     }
 
     private function updateAccountBalance(Transaction $transaction): void

@@ -23,6 +23,8 @@ class User extends Authenticatable
         'timezone',
         'settings',
         'email_verified_at',
+        'current_streak',
+        'last_transaction_date',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -32,5 +34,7 @@ class User extends Authenticatable
         'password' => 'hashed',
         'settings' => 'array',
         'deleted_at' => 'datetime',
+        'current_streak' => 'integer',
+        'last_transaction_date' => 'date',
     ];
 }

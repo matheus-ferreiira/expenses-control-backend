@@ -19,6 +19,8 @@ class AuthUserResource extends JsonResource
             'settings' => $this->settings ?? [],
             'email_verified_at' => $this->email_verified_at?->toISOString(),
             'created_at' => $this->created_at->toISOString(),
+            'current_streak' => $this->current_streak ?? 0,
+            'last_transaction_date' => $this->last_transaction_date?->toDateString(),
         ];
     }
 }
