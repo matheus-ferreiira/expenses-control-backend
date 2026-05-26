@@ -17,11 +17,12 @@ class TransactionCategory extends Model
 {
     use HasFactory, HasUuids, SoftDeletes;
 
-    protected $fillable = ['user_id', 'name', 'type', 'icon', 'color', 'is_default'];
+    protected $fillable = ['user_id', 'name', 'type', 'icon', 'color', 'is_default', 'monthly_limit'];
 
     protected $casts = [
         'type' => TransactionType::class,
         'is_default' => 'boolean',
+        'monthly_limit' => 'float',
     ];
 
     protected static function newFactory(): TransactionCategoryFactory

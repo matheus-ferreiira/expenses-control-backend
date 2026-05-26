@@ -16,6 +16,7 @@ class TransactionCategoryResource extends JsonResource
             'icon' => $this->icon,
             'color' => $this->color,
             'is_default' => $this->is_default,
+            'monthly_limit' => $this->monthly_limit,
         ];
     }
 }
