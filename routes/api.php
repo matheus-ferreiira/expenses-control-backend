@@ -44,6 +44,7 @@ Route::prefix('v1')->group(function () {
             Route::post('logout', [AuthController::class, 'logout']);
             Route::post('logout-all', [AuthController::class, 'logoutAll']);
             Route::get('me', [AuthController::class, 'me']);
+            Route::patch('settings', [AuthController::class, 'updateSettings']);
         });
 
         // Dashboard

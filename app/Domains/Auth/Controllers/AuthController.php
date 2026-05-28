@@ -73,6 +73,21 @@ class AuthController extends Controller
         return $this->success(new AuthUserResource($request->user()));
     }
 
+    public function updateSettings(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'settings' => ['required', 'array'],
+            'settings.modules' => ['sometimes', 'array'],
+            'settings.modules.*' => ['boolean'],
+        ]);
+
+        $user = $request->user();
+        $current = $user->settings ?? [];
+        $user->update(['settings' => array_merge($current, $validated['settings'])]);
+
+        return $this->success(new AuthUserResource($user->fresh()), 'Settings updated');
+    }
+
     public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
     {
         $this->authService->sendPasswordResetLink($request->validated('email'));
