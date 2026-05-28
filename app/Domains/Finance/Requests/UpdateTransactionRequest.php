@@ -18,7 +18,7 @@ class UpdateTransactionRequest extends BaseFormRequest
             'description' => ['sometimes', 'required', 'string', 'max:500'],
             'notes' => ['nullable', 'string'],
             'transaction_date' => ['sometimes', 'required', 'date'],
-            'account_id' => ['sometimes', 'required_without:card_id', 'uuid', Rule::exists('bank_accounts', 'id')->where('user_id', $this->user()->id)],
+            'account_id' => ['sometimes', 'required', 'uuid', Rule::exists('bank_accounts', 'id')->where('user_id', $this->user()->id)],
             'card_id' => ['nullable', 'uuid', Rule::exists('credit_cards', 'id')->where('user_id', $this->user()->id)],
             'category_id' => ['nullable', 'uuid', Rule::exists('transaction_categories', 'id')->where('user_id', $this->user()->id)],
             'is_recurring' => ['sometimes', 'boolean'],
