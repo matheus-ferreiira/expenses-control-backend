@@ -17,7 +17,7 @@ class StoreTransactionRequest extends BaseFormRequest
             'description' => ['required', 'string', 'max:500'],
             'notes' => ['nullable', 'string'],
             'transaction_date' => ['required', 'date'],
-            'account_id' => ['nullable', 'uuid', Rule::exists('bank_accounts', 'id')->where('user_id', $this->user()->id)],
+            'account_id' => ['required_without:card_id', 'uuid', Rule::exists('bank_accounts', 'id')->where('user_id', $this->user()->id)],
             'card_id' => ['nullable', 'uuid', Rule::exists('credit_cards', 'id')->where('user_id', $this->user()->id)],
             'category_id' => ['nullable', 'uuid', Rule::exists('transaction_categories', 'id')->where('user_id', $this->user()->id)],
             'is_recurring' => ['nullable', 'boolean'],
