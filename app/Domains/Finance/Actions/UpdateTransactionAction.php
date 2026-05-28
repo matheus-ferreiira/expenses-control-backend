@@ -144,7 +144,8 @@ final class UpdateTransactionAction
 
     private function reverseAccountBalance(Transaction $transaction): void
     {
-        if (! $transaction->account_id) {
+        // Pending transactions never affected the balance — nothing to reverse
+        if (! $transaction->isConfirmed() || ! $transaction->account_id) {
             return;
         }
 
@@ -162,7 +163,8 @@ final class UpdateTransactionAction
 
     private function applyAccountBalance(Transaction $transaction): void
     {
-        if (! $transaction->account_id) {
+        // Only confirmed transactions affect the balance
+        if (! $transaction->isConfirmed() || ! $transaction->account_id) {
             return;
         }
 

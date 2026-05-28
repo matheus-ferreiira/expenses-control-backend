@@ -80,7 +80,7 @@ class TransactionsTest extends TestCase
 
     // ── Installment Balance Update ────────────────────────────────────────────
 
-    public function test_installment_purchase_deducts_full_amount_from_account_once(): void
+    public function test_installment_purchase_deducts_only_confirmed_installments_from_balance(): void
     {
         $user = User::factory()->create();
         $account = BankAccount::factory()->create(['user_id' => $user->id, 'balance' => 1000.00]);
@@ -96,10 +96,61 @@ class TransactionsTest extends TestCase
             ])
             ->assertCreated();
 
-        // Full amount deducted once, not 3× the installment amount
-        $this->assertEqualsWithDelta(700.00, $account->fresh()->balance, 0.01);
         // 3 installment records created
         $this->assertDatabaseCount('transactions', 3);
+
+        // Only installment 1 (today) is confirmed; installments 2 and 3 are future → Pending
+        // Balance reduced by R$100 (first installment only)
+        $this->assertEqualsWithDelta(900.00, $account->fresh()->balance, 0.01);
+
+        // Verify status distribution
+        $confirmed = \App\Domains\Finance\Models\Transaction::where('status', 'confirmed')->count();
+        $pending = \App\Domains\Finance\Models\Transaction::where('status', 'pending')->count();
+        $this->assertSame(1, $confirmed);
+        $this->assertSame(2, $pending);
+    }
+
+    // ── Future Date → Pending + No Balance Impact ────────────────────────────
+
+    public function test_future_dated_transaction_is_pending_and_does_not_affect_balance(): void
+    {
+        $user = User::factory()->create();
+        $account = BankAccount::factory()->create(['user_id' => $user->id, 'balance' => 1000.00]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/finance/transactions', [
+                'account_id' => $account->id,
+                'type' => 'expense',
+                'amount' => 200.00,
+                'description' => 'Future expense',
+                'transaction_date' => now()->addDays(5)->toDateString(),
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'pending');
+
+        // Balance must not change for pending (future) transactions
+        $this->assertEqualsWithDelta(1000.00, $account->fresh()->balance, 0.01);
+    }
+
+    public function test_future_recurring_transaction_first_occurrence_is_pending(): void
+    {
+        $user = User::factory()->create();
+        $account = BankAccount::factory()->create(['user_id' => $user->id, 'balance' => 500.00]);
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/finance/transactions', [
+                'account_id' => $account->id,
+                'type' => 'income',
+                'amount' => 3000.00,
+                'description' => 'Salário jun',
+                'transaction_date' => now()->addMonths(1)->toDateString(),
+                'is_recurring' => true,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'pending');
+
+        // Balance unchanged — all occurrences are in the future
+        $this->assertEqualsWithDelta(500.00, $account->fresh()->balance, 0.01);
     }
 
     // ── Update Transaction Balance Reversal ───────────────────────────────────

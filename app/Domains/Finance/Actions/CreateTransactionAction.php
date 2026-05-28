@@ -28,6 +28,8 @@ final class CreateTransactionAction
         }
 
         return DB::transaction(function () use ($user, $dto) {
+            $status = $this->resolveStatus($dto->transactionDate);
+
             $transaction = Transaction::create([
                 'user_id' => $user->id,
                 'account_id' => $dto->accountId,
@@ -39,14 +41,18 @@ final class CreateTransactionAction
                 'notes' => $dto->notes,
                 'transaction_date' => $dto->transactionDate,
                 'is_recurring' => false,
-                'status' => TransactionStatus::Confirmed->value,
+                'status' => $status->value,
             ]);
 
             if ($dto->tagIds) {
                 $transaction->tags()->sync($dto->tagIds);
             }
 
-            $this->updateAccountBalance($transaction);
+            // Only affect balance when the transaction is confirmed (today or past)
+            if ($status === TransactionStatus::Confirmed) {
+                $this->updateAccountBalance($transaction);
+            }
+
             $this->updateStreak($user);
 
             return $transaction->load(['category', 'account', 'card', 'tags']);
@@ -54,9 +60,19 @@ final class CreateTransactionAction
     }
 
     /**
-     * Creates the current occurrence (confirmed) and 59 future occurrences (pending)
-     * for a recurring transaction — totalling 5 years.
-     * Only the confirmed occurrence affects the account balance.
+     * Returns Confirmed if the date is today or in the past, Pending if it is in the future.
+     */
+    private function resolveStatus(string $date): TransactionStatus
+    {
+        return Carbon::parse($date)->isAfter(Carbon::today())
+            ? TransactionStatus::Pending
+            : TransactionStatus::Confirmed;
+    }
+
+    /**
+     * Creates occurrences for a recurring transaction.
+     * Each occurrence is Confirmed only when its date is today or past; future dates stay Pending.
+     * Balance is updated per confirmed occurrence (not just the first).
      */
     private function createRecurring(User $user, TransactionDTO $dto): Transaction
     {
@@ -66,9 +82,8 @@ final class CreateTransactionAction
             $first = null;
 
             for ($i = 0; $i < self::RECURRENCE_MONTHS; $i++) {
-                $status = $i === 0
-                    ? TransactionStatus::Confirmed->value
-                    : TransactionStatus::Pending->value;
+                $occurrenceDate = $baseDate->copy()->addMonths($i);
+                $status = $this->resolveStatus($occurrenceDate->toDateString());
 
                 $transaction = Transaction::create([
                     'user_id' => $user->id,
@@ -79,16 +94,18 @@ final class CreateTransactionAction
                     'amount' => $dto->amount,
                     'description' => $dto->description,
                     'notes' => $dto->notes,
-                    'transaction_date' => $baseDate->copy()->addMonths($i)->toDateString(),
+                    'transaction_date' => $occurrenceDate->toDateString(),
                     'is_recurring' => true,
                     'recurrence_config' => $dto->recurrenceConfig,
                     'recurrence_group_id' => $groupId,
-                    'status' => $status,
+                    'status' => $status->value,
                 ]);
 
-                if ($i === 0) {
-                    // Only the first occurrence (confirmed) affects the balance + streak
+                if ($status === TransactionStatus::Confirmed) {
                     $this->updateAccountBalance($transaction);
+                }
+
+                if ($i === 0) {
                     $this->updateStreak($user);
                     $first = $transaction;
                 }
@@ -109,6 +126,9 @@ final class CreateTransactionAction
 
             for ($i = 1; $i <= $dto->totalInstallments; $i++) {
                 $amount = $i === $dto->totalInstallments ? $lastInstallmentAmount : $installmentAmount;
+                $installmentDate = $baseDate->copy()->addMonths($i - 1);
+                $status = $this->resolveStatus($installmentDate->toDateString());
+
                 $transaction = Transaction::create([
                     'user_id' => $user->id,
                     'account_id' => $dto->accountId,
@@ -118,21 +138,29 @@ final class CreateTransactionAction
                     'amount' => $amount,
                     'description' => "{$dto->description} ({$i}/{$dto->totalInstallments})",
                     'notes' => $dto->notes,
-                    'transaction_date' => $baseDate->copy()->addMonths($i - 1)->toDateString(),
+                    'transaction_date' => $installmentDate->toDateString(),
                     'installment_number' => $i,
                     'total_installments' => $dto->totalInstallments,
                     'installment_group_id' => $groupId,
-                    'status' => TransactionStatus::Confirmed->value,
+                    'status' => $status->value,
                 ]);
                 $transactions[] = $transaction;
             }
 
-            // Update account balance once for the full purchase amount
+            // Update account balance per confirmed installment (each installment is an independent cash flow)
             if ($dto->accountId) {
                 $account = BankAccount::find($dto->accountId);
                 if ($account) {
-                    $delta = $dto->type === TransactionType::Income ? $dto->amount : -$dto->amount;
-                    $account->increment('balance', $delta);
+                    $confirmedAmount = collect($transactions)
+                        ->filter(fn ($t) => $t->status === TransactionStatus::Confirmed)
+                        ->sum(fn ($t) => (float) $t->amount);
+
+                    if ($confirmedAmount > 0) {
+                        $delta = $dto->type === TransactionType::Income
+                            ? $confirmedAmount
+                            : -$confirmedAmount;
+                        $account->increment('balance', $delta);
+                    }
                 }
             }
 
