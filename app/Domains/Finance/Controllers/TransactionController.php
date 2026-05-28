@@ -54,6 +54,14 @@ class TransactionController extends Controller
         return $this->success(new TransactionResource($transaction), 'Transaction updated');
     }
 
+    public function confirm(Request $request, Transaction $transaction): JsonResponse
+    {
+        $this->authorize('update', $transaction);
+        $transaction = $this->service->confirm($transaction);
+
+        return $this->success(new TransactionResource($transaction), 'Transaction confirmed');
+    }
+
     public function destroy(Request $request, Transaction $transaction): JsonResponse
     {
         $this->authorize('delete', $transaction);

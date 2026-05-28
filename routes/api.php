@@ -103,6 +103,7 @@ Route::prefix('v1')->group(function () {
 
             // Transactions
             Route::apiResource('transactions', TransactionController::class);
+            Route::patch('transactions/{transaction}/confirm', [TransactionController::class, 'confirm']);
 
             // Categories
             Route::get('categories', [TransactionCategoryController::class, 'index']);

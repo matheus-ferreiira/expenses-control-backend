@@ -291,6 +291,64 @@ class TransactionsTest extends TestCase
         $this->assertCount(2, $response->json('data'));
     }
 
+    // ── Confirm Pending Transaction ───────────────────────────────────────────
+
+    public function test_confirming_pending_transaction_updates_status_and_balance(): void
+    {
+        $user = User::factory()->create();
+        $account = BankAccount::factory()->create(['user_id' => $user->id, 'balance' => 1000.00]);
+
+        $createResponse = $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/finance/transactions', [
+                'account_id' => $account->id,
+                'type' => 'expense',
+                'amount' => 300.00,
+                'description' => 'Future bill',
+                'transaction_date' => now()->addDays(5)->toDateString(),
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'pending');
+
+        // Balance unchanged — transaction is pending
+        $this->assertEqualsWithDelta(1000.00, $account->fresh()->balance, 0.01);
+
+        $transactionId = $createResponse->json('data.id');
+
+        $this->actingAs($user, 'sanctum')
+            ->patchJson("/api/v1/finance/transactions/{$transactionId}/confirm")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'confirmed');
+
+        // Balance now decreased after confirm
+        $this->assertEqualsWithDelta(700.00, $account->fresh()->balance, 0.01);
+    }
+
+    public function test_confirming_already_confirmed_transaction_is_idempotent(): void
+    {
+        $user = User::factory()->create();
+        $account = BankAccount::factory()->create(['user_id' => $user->id, 'balance' => 1000.00]);
+
+        $id = $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/finance/transactions', [
+                'account_id' => $account->id,
+                'type' => 'expense',
+                'amount' => 100.00,
+                'description' => 'Today expense',
+                'transaction_date' => now()->toDateString(),
+            ])
+            ->assertCreated()
+            ->json('data.id');
+
+        $this->assertEqualsWithDelta(900.00, $account->fresh()->balance, 0.01);
+
+        // Confirm again — balance should not change
+        $this->actingAs($user, 'sanctum')
+            ->patchJson("/api/v1/finance/transactions/{$id}/confirm")
+            ->assertOk();
+
+        $this->assertEqualsWithDelta(900.00, $account->fresh()->balance, 0.01);
+    }
+
     // ── User Isolation ────────────────────────────────────────────────────────
 
     public function test_user_can_only_see_their_own_transactions(): void

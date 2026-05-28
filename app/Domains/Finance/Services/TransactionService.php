@@ -2,6 +2,7 @@
 
 namespace App\Domains\Finance\Services;
 
+use App\Domains\Finance\Actions\ConfirmTransactionAction;
 use App\Domains\Finance\Actions\CreateTransactionAction;
 use App\Domains\Finance\Actions\UpdateTransactionAction;
 use App\Domains\Finance\DTOs\TransactionDTO;
@@ -18,6 +19,7 @@ final class TransactionService
     public function __construct(
         private readonly CreateTransactionAction $createTransaction,
         private readonly UpdateTransactionAction $updateTransaction,
+        private readonly ConfirmTransactionAction $confirmTransaction,
     ) {}
 
     public function list(User $user, array $filters = []): LengthAwarePaginator
@@ -85,6 +87,11 @@ final class TransactionService
     public function update(Transaction $transaction, TransactionDTO $dto, string $scope = 'this_only'): Transaction
     {
         return $this->updateTransaction->execute($transaction, $dto, $scope);
+    }
+
+    public function confirm(Transaction $transaction): Transaction
+    {
+        return $this->confirmTransaction->execute($transaction);
     }
 
     public function delete(Transaction $transaction): void
