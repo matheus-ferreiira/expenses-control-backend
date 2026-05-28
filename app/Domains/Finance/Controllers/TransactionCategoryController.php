@@ -9,12 +9,46 @@ use App\Domains\Finance\Resources\TransactionCategoryResource;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class TransactionCategoryController extends Controller
 {
+    /** Default categories seeded for new users on first access. */
+    private const DEFAULTS = [
+        ['name' => 'Alimentação',  'type' => 'expense', 'icon' => 'UtensilsCrossed', 'color' => '#f97316'],
+        ['name' => 'Transporte',   'type' => 'expense', 'icon' => 'Car',             'color' => '#3b82f6'],
+        ['name' => 'Moradia',      'type' => 'expense', 'icon' => 'Home',            'color' => '#8b5cf6'],
+        ['name' => 'Saúde',        'type' => 'expense', 'icon' => 'Heart',           'color' => '#ef4444'],
+        ['name' => 'Lazer',        'type' => 'expense', 'icon' => 'Gamepad2',        'color' => '#22c55e'],
+        ['name' => 'Educação',     'type' => 'expense', 'icon' => 'GraduationCap',   'color' => '#06b6d4'],
+        ['name' => 'Roupas',       'type' => 'expense', 'icon' => 'ShoppingBag',     'color' => '#ec4899'],
+        ['name' => 'Assinatura',   'type' => 'expense', 'icon' => 'Smartphone',      'color' => '#6b7280'],
+        ['name' => 'Salário',      'type' => 'income',  'icon' => 'Briefcase',       'color' => '#22c55e'],
+        ['name' => 'Freelance',    'type' => 'income',  'icon' => 'Laptop',          'color' => '#3b82f6'],
+        ['name' => 'Investimento', 'type' => 'income',  'icon' => 'TrendingUp',      'color' => '#14b8a6'],
+        ['name' => 'Outros',       'type' => 'income',  'icon' => 'Star',            'color' => '#6b7280'],
+    ];
+
     public function index(Request $request): JsonResponse
     {
-        $categories = TransactionCategory::forUser($request->user()->id)->get();
+        $userId = $request->user()->id;
+        $categories = TransactionCategory::forUser($userId)->get();
+
+        // Lazy-seed defaults for users who have never created any category.
+        if ($categories->isEmpty()) {
+            $now = now();
+            $rows = array_map(fn ($d) => array_merge($d, [
+                'id' => (string) Str::uuid(),
+                'user_id' => $userId,
+                'is_default' => true,
+                'monthly_limit' => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]), self::DEFAULTS);
+
+            TransactionCategory::insert($rows);
+            $categories = TransactionCategory::forUser($userId)->get();
+        }
 
         return $this->success(TransactionCategoryResource::collection($categories));
     }
