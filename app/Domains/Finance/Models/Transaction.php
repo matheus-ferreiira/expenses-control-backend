@@ -7,6 +7,7 @@ use App\Domains\Finance\Enums\TransactionType;
 use App\Models\User;
 use Database\Factories\TransactionFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -117,5 +118,22 @@ class Transaction extends Model
     public function isConfirmed(): bool
     {
         return $this->status === TransactionStatus::Confirmed;
+    }
+
+    protected function status(): Attribute
+    {
+        return Attribute::make(
+            get: function ($value) {
+                // Se não tem status no banco, calcula baseado na data
+                if (is_null($value)) {
+                    $today = now()->startOfDay();
+                    $txDate = $this->transaction_date?->startOfDay();
+
+                    return $txDate && $txDate <= $today ? TransactionStatus::Confirmed : TransactionStatus::Pending;
+                }
+
+                return TransactionStatus::from($value);
+            },
+        );
     }
 }
