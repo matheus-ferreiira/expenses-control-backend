@@ -33,6 +33,7 @@ final class CreateTransactionAction
             $transaction = Transaction::create([
                 'user_id' => $user->id,
                 'account_id' => $dto->accountId,
+                'destination_account_id' => $dto->destinationAccountId,
                 'card_id' => $dto->cardId,
                 'category_id' => $dto->categoryId,
                 'type' => $dto->type,
@@ -55,7 +56,7 @@ final class CreateTransactionAction
 
             $this->updateStreak($user);
 
-            return $transaction->load(['category', 'account', 'card', 'tags']);
+            return $transaction->load(['category', 'account', 'card', 'destinationAccount', 'tags']);
         });
     }
 
@@ -206,19 +207,23 @@ final class CreateTransactionAction
 
     private function updateAccountBalance(Transaction $transaction): void
     {
-        if (! $transaction->account_id) {
-            return;
+        if ($transaction->account_id) {
+            $account = BankAccount::find($transaction->account_id);
+            if ($account) {
+                // Income credits, expense/transfer debits the origin account.
+                $delta = $transaction->type === TransactionType::Income
+                    ? $transaction->amount
+                    : -$transaction->amount;
+                $account->increment('balance', $delta);
+            }
         }
 
-        $account = BankAccount::find($transaction->account_id);
-        if (! $account) {
-            return;
+        // For transfers: also credit the destination account.
+        if ($transaction->type === TransactionType::Transfer && $transaction->destination_account_id) {
+            $destination = BankAccount::find($transaction->destination_account_id);
+            if ($destination) {
+                $destination->increment('balance', $transaction->amount);
+            }
         }
-
-        $delta = $transaction->type === TransactionType::Income
-            ? $transaction->amount
-            : -$transaction->amount;
-
-        $account->increment('balance', $delta);
     }
 }

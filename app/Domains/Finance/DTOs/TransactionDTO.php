@@ -20,6 +20,8 @@ final readonly class TransactionDTO
         public ?int $totalInstallments = null,
         /** @var string[]|null */
         public ?array $tagIds = null,
+        /** Destination account for type=transfer — the account being credited. */
+        public ?string $destinationAccountId = null,
     ) {}
 
     public static function fromArray(array $data): self
@@ -37,6 +39,7 @@ final readonly class TransactionDTO
             recurrenceConfig: $data['recurrence_config'] ?? null,
             totalInstallments: $data['total_installments'] ?? null,
             tagIds: $data['tag_ids'] ?? null,
+            destinationAccountId: $data['destination_account_id'] ?? null,
         );
     }
 }

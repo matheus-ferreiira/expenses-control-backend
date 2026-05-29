@@ -25,7 +25,7 @@ final class TransactionService
     public function list(User $user, array $filters = []): LengthAwarePaginator
     {
         $query = Transaction::forUser($user->id)
-            ->with(['category', 'account', 'card', 'tags']);
+            ->with(['category', 'account', 'destinationAccount', 'card', 'tags']);
 
         if (! empty($filters['type'])) {
             $query->where('type', $filters['type']);
@@ -126,6 +126,14 @@ final class TransactionService
                         ? -$transaction->amount
                         : $transaction->amount;
                     $account->increment('balance', $delta);
+                }
+            }
+
+            // For transfers: also reverse the destination account credit.
+            if ($transaction->isConfirmed() && $transaction->type === TransactionType::Transfer && $transaction->destination_account_id) {
+                $destination = BankAccount::find($transaction->destination_account_id);
+                if ($destination) {
+                    $destination->decrement('balance', $transaction->amount);
                 }
             }
 
