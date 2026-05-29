@@ -97,6 +97,27 @@ final class TransactionService
     public function delete(Transaction $transaction): void
     {
         DB::transaction(function () use ($transaction) {
+            if ($transaction->installment_group_id) {
+                // Cascade-delete all installments in the group; reverse balance for confirmed ones
+                /** @var Collection<int, Transaction> $group */
+                $group = Transaction::where('installment_group_id', $transaction->installment_group_id)->get();
+
+                foreach ($group as $occurrence) {
+                    if ($occurrence->isConfirmed() && $occurrence->account_id) {
+                        $account = BankAccount::find($occurrence->account_id);
+                        if ($account) {
+                            $delta = $occurrence->type === TransactionType::Income
+                                ? -$occurrence->amount
+                                : $occurrence->amount;
+                            $account->increment('balance', $delta);
+                        }
+                    }
+                    $occurrence->delete();
+                }
+
+                return;
+            }
+
             if ($transaction->recurrence_group_id) {
                 // Cascade-delete all occurrences; only reverse balance for confirmed ones
                 /** @var Collection<int, Transaction> $group */

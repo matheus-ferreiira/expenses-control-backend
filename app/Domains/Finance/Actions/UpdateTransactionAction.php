@@ -98,10 +98,19 @@ final class UpdateTransactionAction
 
     private function executeBulk(Transaction $transaction, TransactionDTO $dto, string $scope): Transaction
     {
-        $query = Transaction::where('recurrence_group_id', $transaction->recurrence_group_id);
+        // Installment group takes priority if this transaction belongs to one
+        if ($transaction->installment_group_id) {
+            $query = Transaction::where('installment_group_id', $transaction->installment_group_id);
 
-        if ($scope === 'this_and_future') {
-            $query->where('transaction_date', '>=', $transaction->transaction_date->toDateString());
+            if ($scope === 'this_and_future') {
+                $query->where('installment_number', '>=', $transaction->installment_number);
+            }
+        } else {
+            $query = Transaction::where('recurrence_group_id', $transaction->recurrence_group_id);
+
+            if ($scope === 'this_and_future') {
+                $query->where('transaction_date', '>=', $transaction->transaction_date->toDateString());
+            }
         }
 
         $affected = $query->get();
