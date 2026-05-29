@@ -2,6 +2,7 @@
 
 namespace App\Domains\Auth\Controllers;
 
+use App\Domains\Auth\Actions\ResetUserDataAction;
 use App\Domains\Auth\DTOs\GoogleAuthDTO;
 use App\Domains\Auth\DTOs\LoginDTO;
 use App\Domains\Auth\DTOs\RegisterDTO;
@@ -24,6 +25,7 @@ class AuthController extends Controller
 {
     public function __construct(
         private readonly AuthService $authService,
+        private readonly ResetUserDataAction $resetUserDataAction,
     ) {}
 
     public function register(RegisterRequest $request): JsonResponse
@@ -86,6 +88,13 @@ class AuthController extends Controller
         $user->update(['settings' => array_merge($current, $validated['settings'])]);
 
         return $this->success(new AuthUserResource($user->fresh()), 'Settings updated');
+    }
+
+    public function resetData(Request $request): JsonResponse
+    {
+        $this->resetUserDataAction->execute($request->user());
+
+        return $this->success(message: 'All user data has been reset');
     }
 
     public function forgotPassword(ForgotPasswordRequest $request): JsonResponse
