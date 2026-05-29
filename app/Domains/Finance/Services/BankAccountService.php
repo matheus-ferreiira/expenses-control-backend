@@ -12,7 +12,9 @@ final class BankAccountService
 {
     public function list(User $user): Collection
     {
-        return BankAccount::forUser($user->id)->active()->with('creditCards')->get();
+        // Return ALL accounts (active + archived) so the frontend can show archived separately.
+        // The frontend filters via activeAccounts/archivedAccounts computed properties.
+        return BankAccount::forUser($user->id)->with('creditCards')->get();
     }
 
     public function create(User $user, BankAccountDTO $dto): BankAccount
