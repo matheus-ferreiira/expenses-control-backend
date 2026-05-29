@@ -14,8 +14,16 @@ use Illuminate\Support\Str;
 
 final class CreateTransactionAction
 {
-    /** Number of months to generate for recurring transactions (5 years). */
-    private const RECURRENCE_MONTHS = 60;
+    /** Max occurrences when end_type=never, keyed by frequency. */
+    private const MAX_BY_FREQUENCY = [
+        'weekly' => 260,  // ~5 years weekly
+        'biweekly' => 130,  // ~5 years biweekly
+        'monthly' => 60,   // 5 years monthly
+        'bimonthly' => 30,   // 5 years bimonthly
+        'quarterly' => 20,   // 5 years quarterly
+        'semiannual' => 10,   // 5 years semiannual
+        'annual' => 5,    // 5 years annual
+    ];
 
     public function execute(User $user, TransactionDTO $dto): Transaction|array
     {
@@ -72,18 +80,35 @@ final class CreateTransactionAction
 
     /**
      * Creates occurrences for a recurring transaction.
-     * Each occurrence is Confirmed only when its date is today or past; future dates stay Pending.
-     * Balance is updated per confirmed occurrence (not just the first).
+     * Reads recurrence_config to determine frequency and end condition.
+     * Null config → backward-compatible default (monthly, no end = 60 months).
+     *
+     * recurrence_config shape:
+     *   { "frequency": "monthly", "end_type": "never"|"count"|"date",
+     *     "count": int|null, "end_date": "YYYY-MM-DD"|null }
      */
     private function createRecurring(User $user, TransactionDTO $dto): Transaction
     {
         return DB::transaction(function () use ($user, $dto) {
             $groupId = (string) Str::uuid();
             $baseDate = Carbon::parse($dto->transactionDate);
+            $config = $dto->recurrenceConfig ?? [];
+
+            $frequency = $config['frequency'] ?? 'monthly';
+            $endType = $config['end_type'] ?? 'never';
+            $maxCount = self::MAX_BY_FREQUENCY[$frequency] ?? 60;
+
+            // Determine the actual number of occurrences to create
+            $occurrenceCount = match ($endType) {
+                'count' => min((int) ($config['count'] ?? 60), $maxCount),
+                'date' => $this->countUntilDate($baseDate, $frequency, $config['end_date'] ?? null, $maxCount),
+                default => $maxCount,  // 'never'
+            };
+
             $first = null;
 
-            for ($i = 0; $i < self::RECURRENCE_MONTHS; $i++) {
-                $occurrenceDate = $baseDate->copy()->addMonths($i);
+            for ($i = 0; $i < $occurrenceCount; $i++) {
+                $occurrenceDate = $this->addInterval($baseDate->copy(), $frequency, $i);
                 $status = $this->resolveStatus($occurrenceDate->toDateString());
 
                 $transaction = Transaction::create([
@@ -114,6 +139,44 @@ final class CreateTransactionAction
 
             return $first->load(['category', 'account', 'card', 'tags']);
         });
+    }
+
+    /**
+     * Advance $date by one interval of $frequency and return the result.
+     * $step is the 0-based occurrence index (0 = base date, 1 = first advance, …).
+     */
+    private function addInterval(Carbon $date, string $frequency, int $step): Carbon
+    {
+        return match ($frequency) {
+            'weekly' => $date->addWeeks($step),
+            'biweekly' => $date->addWeeks($step * 2),
+            'bimonthly' => $date->addMonths($step * 2),
+            'quarterly' => $date->addMonths($step * 3),
+            'semiannual' => $date->addMonths($step * 6),
+            'annual' => $date->addYears($step),
+            default => $date->addMonths($step),  // 'monthly' + fallback
+        };
+    }
+
+    /** Count how many occurrences fit from $baseDate up to $endDateStr (inclusive). */
+    private function countUntilDate(Carbon $baseDate, string $frequency, ?string $endDateStr, int $max): int
+    {
+        if (! $endDateStr) {
+            return $max;
+        }
+
+        $endDate = Carbon::parse($endDateStr)->endOfDay();
+        $count = 0;
+
+        for ($i = 0; $i < $max; $i++) {
+            $occurrence = $this->addInterval($baseDate->copy(), $frequency, $i);
+            if ($occurrence->greaterThan($endDate)) {
+                break;
+            }
+            $count++;
+        }
+
+        return max(1, $count);
     }
 
     private function createInstallments(User $user, TransactionDTO $dto): array

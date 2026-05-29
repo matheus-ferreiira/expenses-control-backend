@@ -13,8 +13,16 @@ use Illuminate\Support\Str;
 
 final class UpdateTransactionAction
 {
-    /** Number of months to generate when promoting a transaction to a fix series (5 years). */
-    private const RECURRENCE_MONTHS = 60;
+    /** Max occurrences when promoting a transaction to a fix series, keyed by frequency. */
+    private const MAX_BY_FREQUENCY = [
+        'weekly' => 260,
+        'biweekly' => 130,
+        'monthly' => 60,
+        'bimonthly' => 30,
+        'quarterly' => 20,
+        'semiannual' => 10,
+        'annual' => 5,
+    ];
 
     public function execute(Transaction $transaction, TransactionDTO $dto, string $scope = 'this_only'): Transaction
     {
@@ -68,14 +76,26 @@ final class UpdateTransactionAction
     }
 
     /**
-     * Generates months 1..59 as pending occurrences for a transaction just promoted to a fix series.
-     * Month 0 (confirmed) is the existing transaction that was just updated.
+     * Generates future occurrences (1..N-1) when a transaction is promoted to a fix series.
+     * Occurrence 0 (the existing transaction) is already updated by executeSingle().
+     * Reads recurrence_config for frequency and end condition; defaults to monthly/never.
      */
     private function createFutureOccurrences(Transaction $transaction, TransactionDTO $dto, string $groupId): void
     {
         $baseDate = Carbon::parse($dto->transactionDate);
+        $config = $dto->recurrenceConfig ?? [];
+        $frequency = $config['frequency'] ?? 'monthly';
+        $endType = $config['end_type'] ?? 'never';
+        $maxCount = self::MAX_BY_FREQUENCY[$frequency] ?? 60;
 
-        for ($i = 1; $i < self::RECURRENCE_MONTHS; $i++) {
+        $total = match ($endType) {
+            'count' => min((int) ($config['count'] ?? $maxCount), $maxCount),
+            'date' => $this->countUntilDate($baseDate, $frequency, $config['end_date'] ?? null, $maxCount),
+            default => $maxCount,
+        };
+
+        // Start at i=1 — i=0 is the promoted transaction already saved
+        for ($i = 1; $i < $total; $i++) {
             Transaction::create([
                 'user_id' => $transaction->user_id,
                 'account_id' => $dto->accountId,
@@ -85,13 +105,45 @@ final class UpdateTransactionAction
                 'amount' => $dto->amount,
                 'description' => $dto->description,
                 'notes' => $dto->notes,
-                'transaction_date' => $baseDate->copy()->addMonths($i)->toDateString(),
+                'transaction_date' => $this->addInterval($baseDate->copy(), $frequency, $i)->toDateString(),
                 'is_recurring' => true,
                 'recurrence_config' => $dto->recurrenceConfig,
                 'recurrence_group_id' => $groupId,
                 'status' => TransactionStatus::Pending->value,
             ]);
         }
+    }
+
+    private function addInterval(Carbon $date, string $frequency, int $step): Carbon
+    {
+        return match ($frequency) {
+            'weekly' => $date->addWeeks($step),
+            'biweekly' => $date->addWeeks($step * 2),
+            'bimonthly' => $date->addMonths($step * 2),
+            'quarterly' => $date->addMonths($step * 3),
+            'semiannual' => $date->addMonths($step * 6),
+            'annual' => $date->addYears($step),
+            default => $date->addMonths($step),
+        };
+    }
+
+    private function countUntilDate(Carbon $baseDate, string $frequency, ?string $endDateStr, int $max): int
+    {
+        if (! $endDateStr) {
+            return $max;
+        }
+
+        $endDate = Carbon::parse($endDateStr)->endOfDay();
+        $count = 0;
+
+        for ($i = 0; $i < $max; $i++) {
+            if ($this->addInterval($baseDate->copy(), $frequency, $i)->greaterThan($endDate)) {
+                break;
+            }
+            $count++;
+        }
+
+        return max(1, $count);
     }
 
     // ── Bulk update (this_and_future | all) ───────────────────────────────────
