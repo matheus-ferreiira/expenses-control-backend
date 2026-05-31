@@ -37,7 +37,6 @@ final class BankAccountService
             'name' => $dto->name,
             'type' => $dto->type,
             'bank_name' => $dto->bankName,
-            'balance' => $dto->balance,
             'color' => $dto->color,
             'is_active' => $dto->isActive,
         ]);
