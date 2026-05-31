@@ -119,11 +119,11 @@ final class UpdateTransactionAction
         return match ($frequency) {
             'weekly' => $date->addWeeks($step),
             'biweekly' => $date->addWeeks($step * 2),
-            'bimonthly' => $date->addMonths($step * 2),
-            'quarterly' => $date->addMonths($step * 3),
-            'semiannual' => $date->addMonths($step * 6),
-            'annual' => $date->addYears($step),
-            default => $date->addMonths($step),
+            'bimonthly' => $date->addMonthsNoOverflow($step * 2),
+            'quarterly' => $date->addMonthsNoOverflow($step * 3),
+            'semiannual' => $date->addMonthsNoOverflow($step * 6),
+            'annual' => $date->addYearsNoOverflow($step),
+            default => $date->addMonthsNoOverflow($step),
         };
     }
 

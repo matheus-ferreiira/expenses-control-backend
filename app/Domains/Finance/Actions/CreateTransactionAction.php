@@ -150,11 +150,11 @@ final class CreateTransactionAction
         return match ($frequency) {
             'weekly' => $date->addWeeks($step),
             'biweekly' => $date->addWeeks($step * 2),
-            'bimonthly' => $date->addMonths($step * 2),
-            'quarterly' => $date->addMonths($step * 3),
-            'semiannual' => $date->addMonths($step * 6),
-            'annual' => $date->addYears($step),
-            default => $date->addMonths($step),  // 'monthly' + fallback
+            'bimonthly' => $date->addMonthsNoOverflow($step * 2),
+            'quarterly' => $date->addMonthsNoOverflow($step * 3),
+            'semiannual' => $date->addMonthsNoOverflow($step * 6),
+            'annual' => $date->addYearsNoOverflow($step),
+            default => $date->addMonthsNoOverflow($step),  // 'monthly' + fallback
         };
     }
 
@@ -190,7 +190,7 @@ final class CreateTransactionAction
 
             for ($i = 1; $i <= $dto->totalInstallments; $i++) {
                 $amount = $i === $dto->totalInstallments ? $lastInstallmentAmount : $installmentAmount;
-                $installmentDate = $baseDate->copy()->addMonths($i - 1);
+                $installmentDate = $baseDate->copy()->addMonthsNoOverflow($i - 1);
                 $status = $this->resolveStatus($installmentDate->toDateString());
 
                 $transaction = Transaction::create([
