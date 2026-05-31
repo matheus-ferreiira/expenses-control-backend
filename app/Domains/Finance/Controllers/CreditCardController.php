@@ -5,6 +5,7 @@ namespace App\Domains\Finance\Controllers;
 use App\Domains\Finance\Models\BankAccount;
 use App\Domains\Finance\Models\CreditCard;
 use App\Domains\Finance\Requests\StoreCreditCardRequest;
+use App\Domains\Finance\Requests\StandaloneStoreCreditCardRequest;
 use App\Domains\Finance\Requests\UpdateCreditCardRequest;
 use App\Domains\Finance\Resources\CreditCardResource;
 use App\Domains\Finance\Services\BankAccountService;
@@ -34,14 +35,10 @@ class CreditCardController extends Controller
         return $this->created(new CreditCardResource($card->load('bankAccount')), 'Card created');
     }
 
-    public function storeStandalone(StoreCreditCardRequest $request): JsonResponse
+    public function storeStandalone(StandaloneStoreCreditCardRequest $request): JsonResponse
     {
-        $bankAccountId = $request->input('bank_account_id');
-        if (!$bankAccountId) {
-            return $this->error('bank_account_id é obrigatório', 422);
-        }
-
-        $bankAccount = BankAccount::forUser($request->user()->id)->findOrFail($bankAccountId);
+        $bankAccount = BankAccount::forUser($request->user()->id)
+            ->findOrFail($request->validated()['bank_account_id']);
         $this->authorize('update', $bankAccount);
         $data = collect($request->validated())->except('bank_account_id')->all();
         $card = $this->service->createCreditCard($bankAccount, $data);
