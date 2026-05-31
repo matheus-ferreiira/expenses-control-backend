@@ -28,7 +28,23 @@ class CreditCardController extends Controller
     public function store(StoreCreditCardRequest $request, BankAccount $bankAccount): JsonResponse
     {
         $this->authorize('update', $bankAccount);
-        $card = $this->service->createCreditCard($bankAccount, $request->validated());
+        $data = collect($request->validated())->except('bank_account_id')->all();
+        $card = $this->service->createCreditCard($bankAccount, $data);
+
+        return $this->created(new CreditCardResource($card->load('bankAccount')), 'Card created');
+    }
+
+    public function storeStandalone(StoreCreditCardRequest $request): JsonResponse
+    {
+        $bankAccountId = $request->input('bank_account_id');
+        if (!$bankAccountId) {
+            return $this->error('bank_account_id é obrigatório', 422);
+        }
+
+        $bankAccount = BankAccount::forUser($request->user()->id)->findOrFail($bankAccountId);
+        $this->authorize('update', $bankAccount);
+        $data = collect($request->validated())->except('bank_account_id')->all();
+        $card = $this->service->createCreditCard($bankAccount, $data);
 
         return $this->created(new CreditCardResource($card->load('bankAccount')), 'Card created');
     }
