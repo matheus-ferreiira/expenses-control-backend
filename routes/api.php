@@ -90,6 +90,7 @@ Route::prefix('v1')->group(function () {
 
         // Finance - Bank Accounts
         Route::prefix('finance')->group(function () {
+            Route::get('balance/historical', [BankAccountController::class, 'historicalBalance']);
             Route::get('balance', [BankAccountController::class, 'consolidatedBalance']);
 
             Route::apiResource('accounts', BankAccountController::class);

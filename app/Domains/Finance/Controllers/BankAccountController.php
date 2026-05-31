@@ -66,4 +66,12 @@ class BankAccountController extends Controller
     {
         return $this->success($this->service->getConsolidatedBalance($request->user()));
     }
+
+    public function historicalBalance(Request $request): JsonResponse
+    {
+        $month = (int) $request->query('month', date('n'));
+        $year = (int) $request->query('year', date('Y'));
+
+        return $this->success($this->service->getHistoricalBalance($request->user(), $year, $month));
+    }
 }

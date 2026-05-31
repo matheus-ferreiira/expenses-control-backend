@@ -3,9 +3,12 @@
 namespace App\Domains\Finance\Services;
 
 use App\Domains\Finance\DTOs\BankAccountDTO;
+use App\Domains\Finance\Enums\TransactionType;
 use App\Domains\Finance\Models\BankAccount;
 use App\Domains\Finance\Models\CreditCard;
+use App\Domains\Finance\Models\Transaction;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 
 final class BankAccountService
@@ -47,6 +50,45 @@ final class BankAccountService
     public function delete(BankAccount $account): void
     {
         $account->delete();
+    }
+
+    public function getHistoricalBalance(User $user, int $year, int $month): array
+    {
+        $accounts = BankAccount::forUser($user->id)->active()->get();
+        $currentBalance = (float) $accounts->sum('balance');
+
+        $endOfMonth = Carbon::createFromDate($year, $month, 1)->endOfMonth()->toDateString();
+
+        $incomeAfter = (float) Transaction::forUser($user->id)
+            ->confirmed()
+            ->where('type', TransactionType::Income)
+            ->where('transaction_date', '>', $endOfMonth)
+            ->sum('amount');
+
+        $expenseAfter = (float) Transaction::forUser($user->id)
+            ->confirmed()
+            ->where('type', TransactionType::Expense)
+            ->where('transaction_date', '>', $endOfMonth)
+            ->sum('amount');
+
+        $historicalBalance = $currentBalance - $incomeAfter + $expenseAfter;
+
+        $pendingIncome = (float) Transaction::forUser($user->id)
+            ->pending()
+            ->where('type', TransactionType::Income)
+            ->inMonth($year, $month)
+            ->sum('amount');
+
+        $pendingExpense = (float) Transaction::forUser($user->id)
+            ->pending()
+            ->where('type', TransactionType::Expense)
+            ->inMonth($year, $month)
+            ->sum('amount');
+
+        return [
+            'balance' => $historicalBalance,
+            'projected_balance' => $historicalBalance + $pendingIncome - $pendingExpense,
+        ];
     }
 
     public function getConsolidatedBalance(User $user): array
