@@ -2,6 +2,7 @@
 
 namespace App\Domains\Finance\Services;
 
+use App\Domains\Finance\Enums\TransactionStatus;
 use App\Domains\Finance\Enums\TransactionType;
 use App\Domains\Finance\Models\Transaction;
 use App\Models\User;
@@ -15,10 +16,15 @@ final class FinanceReportService
             ->with('category')
             ->get();
 
-        $income = $transactions->where('type', TransactionType::Income)->sum('amount');
-        $expenses = $transactions->where('type', TransactionType::Expense)->sum('amount');
+        $confirmed = $transactions->where('status', TransactionStatus::Confirmed);
+        $pending = $transactions->where('status', TransactionStatus::Pending);
 
-        $expensesByCategory = $transactions
+        $income = $confirmed->where('type', TransactionType::Income)->sum('amount');
+        $expenses = $confirmed->where('type', TransactionType::Expense)->sum('amount');
+        $pendingIncome = $pending->where('type', TransactionType::Income)->sum('amount');
+        $pendingExpenses = $pending->where('type', TransactionType::Expense)->sum('amount');
+
+        $expensesByCategory = $confirmed
             ->where('type', TransactionType::Expense)
             ->groupBy('category_id')
             ->map(function ($group) {
@@ -48,6 +54,8 @@ final class FinanceReportService
             'income' => (float) $income,
             'expenses' => (float) $expenses,
             'balance' => (float) ($income - $expenses),
+            'pending_income' => (float) $pendingIncome,
+            'pending_expenses' => (float) $pendingExpenses,
             'transactions_count' => $transactions->count(),
             'expenses_by_category' => $expensesByCategory,
         ];
@@ -62,13 +70,17 @@ final class FinanceReportService
         $months = [];
         for ($m = 1; $m <= 12; $m++) {
             $data = $transactions->filter(fn ($t) => $t->transaction_date->month === $m);
-            $income = (float) $data->where('type', TransactionType::Income)->sum('amount');
-            $expenses = (float) $data->where('type', TransactionType::Expense)->sum('amount');
+            $confirmedData = $data->where('status', TransactionStatus::Confirmed);
+            $pendingData = $data->where('status', TransactionStatus::Pending);
+            $income = (float) $confirmedData->where('type', TransactionType::Income)->sum('amount');
+            $expenses = (float) $confirmedData->where('type', TransactionType::Expense)->sum('amount');
             $months[$m] = [
                 'month' => $m,
                 'income' => $income,
                 'expenses' => $expenses,
                 'balance' => $income - $expenses,
+                'pending_income' => (float) $pendingData->where('type', TransactionType::Income)->sum('amount'),
+                'pending_expenses' => (float) $pendingData->where('type', TransactionType::Expense)->sum('amount'),
             ];
         }
 
@@ -82,7 +94,9 @@ final class FinanceReportService
             ->orderBy('transaction_date')
             ->get();
 
-        $byDate = $transactions->groupBy(fn ($t) => $t->transaction_date->toDateString())
+        $confirmedAll = $transactions->where('status', TransactionStatus::Confirmed);
+
+        $byDate = $confirmedAll->groupBy(fn ($t) => $t->transaction_date->toDateString())
             ->map(function ($group) {
                 return [
                     'income' => (float) $group->where('type', TransactionType::Income)->sum('amount'),
@@ -93,8 +107,8 @@ final class FinanceReportService
         return [
             'start_date' => $startDate,
             'end_date' => $endDate,
-            'total_income' => (float) $transactions->where('type', TransactionType::Income)->sum('amount'),
-            'total_expenses' => (float) $transactions->where('type', TransactionType::Expense)->sum('amount'),
+            'total_income' => (float) $confirmedAll->where('type', TransactionType::Income)->sum('amount'),
+            'total_expenses' => (float) $confirmedAll->where('type', TransactionType::Expense)->sum('amount'),
             'by_date' => $byDate,
         ];
     }
