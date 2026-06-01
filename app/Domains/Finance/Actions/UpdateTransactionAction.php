@@ -166,10 +166,33 @@ final class UpdateTransactionAction
         }
 
         $affected = $query->get();
+        $today = Carbon::today();
+        $newBaseDate = Carbon::parse($dto->transactionDate);
 
         foreach ($affected as $occurrence) {
             // Reverse the old balance contribution before updating
             $this->reverseAccountBalance($occurrence);
+
+            // Determine the new date for this occurrence.
+            // For the selected occurrence use the date from the DTO.
+            // For other occurrences in a recurring series, shift the day-of-month
+            // to match the new base date while preserving each occurrence's year/month.
+            // Installment occurrences keep their original dates (installment number drives order, not day).
+            if ($occurrence->id === $transaction->id) {
+                $newDate = $dto->transactionDate;
+            } elseif (! $transaction->installment_group_id) {
+                $occDate = $occurrence->transaction_date->copy();
+                $newDate = $occDate->setDay(min($newBaseDate->day, $occDate->daysInMonth))->toDateString();
+            } else {
+                $newDate = $occurrence->transaction_date->toDateString();
+            }
+
+            // If the occurrence was confirmed but the new date falls in the future,
+            // demote it to pending so the balance reversal (done above) is permanent.
+            $newStatus = $occurrence->status;
+            if ($occurrence->isConfirmed() && Carbon::parse($newDate)->greaterThan($today)) {
+                $newStatus = TransactionStatus::Pending;
+            }
 
             $updateData = [
                 'account_id' => $dto->accountId,
@@ -179,14 +202,11 @@ final class UpdateTransactionAction
                 'amount' => $dto->amount,
                 'description' => $dto->description,
                 'notes' => $dto->notes,
+                'transaction_date' => $newDate,
                 'is_recurring' => $dto->isRecurring,
                 'recurrence_config' => $dto->recurrenceConfig,
+                'status' => $newStatus,
             ];
-
-            // Only override transaction_date on the occurrence the user directly selected
-            if ($occurrence->id === $transaction->id) {
-                $updateData['transaction_date'] = $dto->transactionDate;
-            }
 
             $occurrence->update($updateData);
 
@@ -194,7 +214,7 @@ final class UpdateTransactionAction
                 $occurrence->tags()->sync($dto->tagIds);
             }
 
-            // Re-apply balance with the new amount / new account
+            // Re-apply balance only if the occurrence is still confirmed after the update.
             $this->applyAccountBalance($occurrence);
         }
 
