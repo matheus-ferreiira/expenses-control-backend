@@ -56,34 +56,56 @@ final class BankAccountService
     {
         $accounts = BankAccount::forUser($user->id)->active()->get();
         $currentBalance = (float) $accounts->sum('balance');
+        $today = Carbon::today();
 
-        $endOfMonth = Carbon::createFromDate($year, $month, 1)->endOfMonth()->toDateString();
+        $endOfMonth = Carbon::createFromDate($year, $month, 1)->endOfMonth();
+        $isFutureMonth = ($year > $today->year) || ($year === $today->year && $month > $today->month);
 
         $incomeAfter = (float) Transaction::forUser($user->id)
             ->confirmed()
             ->where('type', TransactionType::Income)
-            ->where('transaction_date', '>', $endOfMonth)
+            ->where('transaction_date', '>', $endOfMonth->toDateString())
             ->sum('amount');
 
         $expenseAfter = (float) Transaction::forUser($user->id)
             ->confirmed()
             ->where('type', TransactionType::Expense)
-            ->where('transaction_date', '>', $endOfMonth)
+            ->where('transaction_date', '>', $endOfMonth->toDateString())
             ->sum('amount');
 
         $historicalBalance = $currentBalance - $incomeAfter + $expenseAfter;
 
-        $pendingIncome = (float) Transaction::forUser($user->id)
-            ->pending()
-            ->where('type', TransactionType::Income)
-            ->inMonth($year, $month)
-            ->sum('amount');
+        if ($isFutureMonth) {
+            // For future months: accumulate ALL pending transactions from today through
+            // the end of the target month so that navigating further forward correctly
+            // deducts each intermediate month's pending (e.g. July includes June+July pending).
+            $pendingIncome = (float) Transaction::forUser($user->id)
+                ->pending()
+                ->where('type', TransactionType::Income)
+                ->where('transaction_date', '>=', $today->toDateString())
+                ->where('transaction_date', '<=', $endOfMonth->toDateString())
+                ->sum('amount');
 
-        $pendingExpense = (float) Transaction::forUser($user->id)
-            ->pending()
-            ->where('type', TransactionType::Expense)
-            ->inMonth($year, $month)
-            ->sum('amount');
+            $pendingExpense = (float) Transaction::forUser($user->id)
+                ->pending()
+                ->where('type', TransactionType::Expense)
+                ->where('transaction_date', '>=', $today->toDateString())
+                ->where('transaction_date', '<=', $endOfMonth->toDateString())
+                ->sum('amount');
+        } else {
+            // For current/past months: only count pending within that specific month.
+            $pendingIncome = (float) Transaction::forUser($user->id)
+                ->pending()
+                ->where('type', TransactionType::Income)
+                ->inMonth($year, $month)
+                ->sum('amount');
+
+            $pendingExpense = (float) Transaction::forUser($user->id)
+                ->pending()
+                ->where('type', TransactionType::Expense)
+                ->inMonth($year, $month)
+                ->sum('amount');
+        }
 
         return [
             'balance' => $historicalBalance,
