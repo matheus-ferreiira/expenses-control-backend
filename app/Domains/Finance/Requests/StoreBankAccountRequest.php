@@ -16,7 +16,7 @@ class StoreBankAccountRequest extends BaseFormRequest
             'bank_name' => ['nullable', 'string', 'max:255'],
             'balance' => ['nullable', 'numeric', 'min:-9999999', 'max:9999999999'],
             'currency' => ['nullable', 'string', 'size:3'],
-            'color' => ['nullable', 'string', 'max:20'],
+            'color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{3,8}$/'],
         ];
     }
 }

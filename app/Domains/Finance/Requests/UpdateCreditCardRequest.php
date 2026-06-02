@@ -13,7 +13,8 @@ class UpdateCreditCardRequest extends BaseFormRequest
             'limit_amount' => ['nullable', 'numeric', 'min:0'],
             'closing_day' => ['nullable', 'integer', 'min:1', 'max:31'],
             'due_day' => ['nullable', 'integer', 'min:1', 'max:31'],
-            'color' => ['nullable', 'string', 'max:20'],
+            'bank_account_id' => ['nullable', 'string', 'uuid'],
+            'color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{3,8}$/'],
             'is_active' => ['nullable', 'boolean'],
         ];
     }

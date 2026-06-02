@@ -12,7 +12,7 @@ class StoreTransactionCategoryRequest extends BaseFormRequest
             'name' => ['required', 'string', 'max:100'],
             'type' => ['required', 'in:income,expense'],
             'icon' => ['nullable', 'string', 'max:50'],
-            'color' => ['nullable', 'string', 'max:20'],
+            'color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{3,8}$/'],
         ];
     }
 }

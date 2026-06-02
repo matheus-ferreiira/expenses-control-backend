@@ -14,7 +14,7 @@ class StoreCreditCardRequest extends BaseFormRequest
             'limit_amount' => ['required', 'numeric', 'min:0'],
             'closing_day' => ['required', 'integer', 'min:1', 'max:31'],
             'due_day' => ['required', 'integer', 'min:1', 'max:31'],
-            'color' => ['nullable', 'string', 'max:20'],
+            'color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{3,8}$/'],
         ];
     }
 }
