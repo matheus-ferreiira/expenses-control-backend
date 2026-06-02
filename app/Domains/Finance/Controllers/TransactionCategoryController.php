@@ -34,8 +34,9 @@ class TransactionCategoryController extends Controller
         $userId = $request->user()->id;
         $categories = TransactionCategory::forUser($userId)->get();
 
-        // Lazy-seed defaults for users who have never created any category.
-        if ($categories->isEmpty()) {
+        // Lazy-seed defaults only if the user has never had any category (including soft-deleted).
+        // Checking withTrashed() prevents re-seeding when all categories were soft-deleted.
+        if (TransactionCategory::withTrashed()->where('user_id', $userId)->doesntExist()) {
             $now = now();
             $rows = array_map(fn ($d) => array_merge($d, [
                 'id' => (string) Str::uuid(),
