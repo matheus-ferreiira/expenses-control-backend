@@ -69,8 +69,13 @@ class BankAccountController extends Controller
 
     public function historicalBalance(Request $request): JsonResponse
     {
+        $request->validate([
+            'month' => ['sometimes', 'integer', 'min:1', 'max:12'],
+            'year'  => ['sometimes', 'integer', 'min:2000', 'max:2100'],
+        ]);
+
         $month = (int) $request->query('month', date('n'));
-        $year = (int) $request->query('year', date('Y'));
+        $year  = (int) $request->query('year', date('Y'));
 
         return $this->success($this->service->getHistoricalBalance($request->user(), $year, $month));
     }
