@@ -49,6 +49,7 @@ final class UpdateTransactionAction
 
         $transaction->update([
             'account_id' => $dto->accountId,
+            'destination_account_id' => $dto->destinationAccountId,
             'card_id' => $dto->cardId,
             'category_id' => $dto->categoryId,
             'type' => $dto->type,
@@ -196,6 +197,7 @@ final class UpdateTransactionAction
 
             $updateData = [
                 'account_id' => $dto->accountId,
+                'destination_account_id' => $dto->destinationAccountId,
                 'card_id' => $dto->cardId,
                 'category_id' => $dto->categoryId,
                 'type' => $dto->type,
@@ -231,15 +233,20 @@ final class UpdateTransactionAction
         }
 
         $account = BankAccount::find($transaction->account_id);
-        if (! $account) {
-            return;
+        if ($account) {
+            $delta = $transaction->type === TransactionType::Income
+                ? -$transaction->amount
+                : $transaction->amount;
+            $account->increment('balance', $delta);
         }
 
-        $delta = $transaction->type === TransactionType::Income
-            ? -$transaction->amount
-            : $transaction->amount;
-
-        $account->increment('balance', $delta);
+        // For transfers: also reverse the destination account credit
+        if ($transaction->type === TransactionType::Transfer && $transaction->destination_account_id) {
+            $destination = BankAccount::find($transaction->destination_account_id);
+            if ($destination) {
+                $destination->decrement('balance', $transaction->amount);
+            }
+        }
     }
 
     private function applyAccountBalance(Transaction $transaction): void
@@ -250,14 +257,19 @@ final class UpdateTransactionAction
         }
 
         $account = BankAccount::find($transaction->account_id);
-        if (! $account) {
-            return;
+        if ($account) {
+            $delta = $transaction->type === TransactionType::Income
+                ? $transaction->amount
+                : -$transaction->amount;
+            $account->increment('balance', $delta);
         }
 
-        $delta = $transaction->type === TransactionType::Income
-            ? $transaction->amount
-            : -$transaction->amount;
-
-        $account->increment('balance', $delta);
+        // For transfers: also credit the destination account
+        if ($transaction->type === TransactionType::Transfer && $transaction->destination_account_id) {
+            $destination = BankAccount::find($transaction->destination_account_id);
+            if ($destination) {
+                $destination->increment('balance', $transaction->amount);
+            }
+        }
     }
 }

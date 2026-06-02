@@ -34,7 +34,15 @@ final class ConfirmTransactionAction
                 }
             }
 
-            return $transaction->load(['category', 'account', 'card', 'tags']);
+            // For transfers: also credit the destination account
+            if ($transaction->type === TransactionType::Transfer && $transaction->destination_account_id) {
+                $destination = BankAccount::find($transaction->destination_account_id);
+                if ($destination) {
+                    $destination->increment('balance', $transaction->amount);
+                }
+            }
+
+            return $transaction->fresh(['category', 'account', 'card', 'tags']);
         });
     }
 }
