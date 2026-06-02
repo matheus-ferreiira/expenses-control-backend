@@ -31,7 +31,7 @@ final class FinanceReportService
                 $first = $group->first();
 
                 return [
-                    'category' => $first->category?->name ?? 'Uncategorized',
+                    'category' => $first->category?->name ?? 'Sem categoria',
                     'color' => $first->category?->color ?? '#888',
                     'total' => $group->sum('amount'),
                     'count' => $group->count(),
