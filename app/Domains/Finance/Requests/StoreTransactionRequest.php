@@ -15,7 +15,7 @@ class StoreTransactionRequest extends BaseFormRequest
             'type' => ['required', new Enum(TransactionType::class)],
             'amount' => ['required', 'numeric', 'min:0.01'],
             'description' => ['required', 'string', 'max:500'],
-            'notes' => ['nullable', 'string'],
+            'notes' => ['nullable', 'string', 'max:2000'],
             'transaction_date' => ['required', 'date'],
             'account_id' => ['required', 'uuid', Rule::exists('bank_accounts', 'id')->where('user_id', $this->user()->id)],
             'destination_account_id' => [
