@@ -3,6 +3,7 @@
 namespace App\Domains\Finance\Resources;
 
 use App\Domains\Finance\Models\Budget;
+use App\Domains\Finance\Models\FinanceGoal;
 use App\Domains\Finance\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -52,7 +53,7 @@ class BudgetResource extends JsonResource
                 'category_name' => $item->category?->name,
                 'category_color' => $item->category?->color,
                 'category_icon' => $item->category?->icon,
-                'amount' => (float) $item->amount,
+                'amount' => $amount,
                 'percentage' => (float) $item->percentage,
                 'spent' => $spent,
                 'spent_percentage' => $spentPct,
@@ -61,12 +62,37 @@ class BudgetResource extends JsonResource
             ];
         });
 
-        $totalBudgeted = $items->sum('amount');
+        // Active goals with monthly contribution
+        $goals = FinanceGoal::where('user_id', $budget->user_id)
+            ->where('status', 'active')
+            ->where('monthly_contribution', '>', 0)
+            ->get();
+
         $baseAmount = (float) $budget->base_amount;
+
+        $goalsItems = $goals->map(function ($goal) use ($baseAmount) {
+            $amount = (float) $goal->monthly_contribution;
+            $pct = $baseAmount > 0 ? round(($amount / $baseAmount) * 100, 2) : 0;
+            return [
+                'id' => $goal->id,
+                'name' => $goal->name,
+                'color' => $goal->color,
+                'icon' => $goal->icon ?? 'Flag',
+                'amount' => $amount,
+                'percentage' => $pct,
+                'type' => 'goal',
+            ];
+        });
+
+        $totalFromCategories = $items->sum('amount');
+        $totalFromGoals = $goals->sum('monthly_contribution');
+        $totalBudgeted = $totalFromCategories + (float) $totalFromGoals;
         $totalSpent = $items->sum('spent');
-        $freeAmount = max(0, $baseAmount - $totalBudgeted);
+        $freeAmount = $baseAmount - $totalBudgeted;
         $budgetedPct = $baseAmount > 0 ? round(($totalBudgeted / $baseAmount) * 100, 2) : 0;
         $freePct = $baseAmount > 0 ? round(($freeAmount / $baseAmount) * 100, 2) : 0;
+        $categoriesPct = $baseAmount > 0 ? round(($totalFromCategories / $baseAmount) * 100, 2) : 0;
+        $goalsPct = $baseAmount > 0 ? round(((float) $totalFromGoals / $baseAmount) * 100, 2) : 0;
 
         return [
             'id' => $budget->id,
@@ -76,13 +102,18 @@ class BudgetResource extends JsonResource
             'is_template' => $budget->is_template,
             'summary' => [
                 'base_amount' => $baseAmount,
+                'total_from_categories' => (float) $totalFromCategories,
+                'total_from_goals' => (float) $totalFromGoals,
                 'total_budgeted' => $totalBudgeted,
                 'total_budgeted_percentage' => $budgetedPct,
                 'total_spent' => $totalSpent,
                 'free_amount' => $freeAmount,
                 'free_percentage' => $freePct,
+                'categories_percentage' => $categoriesPct,
+                'goals_percentage' => $goalsPct,
             ],
             'items' => $items->values(),
+            'goals_items' => $goalsItems->values(),
             'created_at' => $budget->created_at,
             'updated_at' => $budget->updated_at,
         ];

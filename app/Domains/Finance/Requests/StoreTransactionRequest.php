@@ -24,6 +24,7 @@ class StoreTransactionRequest extends BaseFormRequest
             ],
             'card_id' => ['nullable', 'uuid', Rule::exists('credit_cards', 'id')->where('user_id', $this->user()->id)],
             'category_id' => ['nullable', 'uuid', Rule::exists('transaction_categories', 'id')->where('user_id', $this->user()->id)],
+            'goal_id' => ['nullable', 'uuid', Rule::exists('finance_goals', 'id')->where('user_id', $this->user()->id)],
             'is_recurring' => ['nullable', 'boolean'],
             'recurrence_config' => ['nullable', 'array'],
             'total_installments' => ['nullable', 'integer', 'min:2', 'max:60'],
