@@ -3,7 +3,9 @@
 use App\Domains\Auth\Controllers\AuthController;
 use App\Domains\Calendar\Controllers\CalendarEventController;
 use App\Domains\Finance\Controllers\BankAccountController;
+use App\Domains\Finance\Controllers\BudgetController;
 use App\Domains\Finance\Controllers\CreditCardController;
+use App\Domains\Finance\Controllers\FinanceGoalController;
 use App\Domains\Finance\Controllers\FinanceReportController;
 use App\Domains\Finance\Controllers\TransactionCategoryController;
 use App\Domains\Finance\Controllers\TransactionController;
@@ -128,6 +130,24 @@ Route::prefix('v1')->group(function () {
                 Route::get('yearly', [FinanceReportController::class, 'yearlySummary']);
                 Route::get('cashflow', [FinanceReportController::class, 'cashFlow']);
                 Route::get('balance', [FinanceReportController::class, 'consolidatedBalance']);
+            });
+
+            // Budgets
+            Route::prefix('budgets')->group(function () {
+                Route::get('previous', [BudgetController::class, 'previous']);
+                Route::get('/', [BudgetController::class, 'index']);
+                Route::post('/', [BudgetController::class, 'store']);
+                Route::put('{budget}', [BudgetController::class, 'update']);
+                Route::delete('{budget}', [BudgetController::class, 'destroy']);
+            });
+
+            // Finance Goals
+            Route::prefix('goals')->group(function () {
+                Route::get('/', [FinanceGoalController::class, 'index']);
+                Route::post('/', [FinanceGoalController::class, 'store']);
+                Route::put('{financeGoal}', [FinanceGoalController::class, 'update']);
+                Route::post('{financeGoal}/complete', [FinanceGoalController::class, 'complete']);
+                Route::delete('{financeGoal}', [FinanceGoalController::class, 'destroy']);
             });
         });
 

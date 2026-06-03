@@ -25,6 +25,7 @@ class Transaction extends Model
         'destination_account_id',
         'card_id',
         'category_id',
+        'goal_id',
         'type',
         'amount',
         'description',
@@ -84,6 +85,11 @@ class Transaction extends Model
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(TransactionTag::class, 'transaction_transaction_tag', 'transaction_id', 'transaction_tag_id');
+    }
+
+    public function goal(): BelongsTo
+    {
+        return $this->belongsTo(FinanceGoal::class, 'goal_id');
     }
 
     public function scopeForUser(Builder $query, string $userId): Builder
