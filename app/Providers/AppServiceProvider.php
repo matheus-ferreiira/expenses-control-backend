@@ -27,7 +27,11 @@ use App\Domains\Notes\Models\NoteTag;
 use App\Domains\Notes\Policies\NotePolicy;
 use App\Domains\Notes\Policies\NoteTagPolicy;
 use App\Domains\Purchases\Models\PurchaseItem;
+use App\Domains\Purchases\Models\ShoppingItem;
+use App\Domains\Purchases\Models\ShoppingSession;
 use App\Domains\Purchases\Policies\PurchaseItemPolicy;
+use App\Domains\Purchases\Policies\ShoppingItemPolicy;
+use App\Domains\Purchases\Policies\ShoppingSessionPolicy;
 use App\Domains\Tasks\Models\Task;
 use App\Domains\Tasks\Models\TaskLabel;
 use App\Domains\Tasks\Policies\TaskLabelPolicy;
@@ -56,5 +60,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Note::class, NotePolicy::class);
         Gate::policy(NoteTag::class, NoteTagPolicy::class);
         Gate::policy(PurchaseItem::class, PurchaseItemPolicy::class);
+        Gate::policy(ShoppingSession::class, ShoppingSessionPolicy::class);
+        Gate::policy(ShoppingItem::class, ShoppingItemPolicy::class);
     }
 }

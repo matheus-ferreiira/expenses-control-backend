@@ -15,6 +15,8 @@ use App\Domains\Habits\Controllers\HabitController;
 use App\Domains\Notes\Controllers\NoteController;
 use App\Domains\Notes\Controllers\NoteTagController;
 use App\Domains\Purchases\Controllers\PurchaseItemController;
+use App\Domains\Purchases\Controllers\ShoppingItemController;
+use App\Domains\Purchases\Controllers\ShoppingSessionController;
 use App\Domains\Reports\Controllers\DashboardController;
 use App\Domains\Reports\Controllers\ReportController;
 use App\Domains\Tasks\Controllers\SubtaskController;
@@ -198,7 +200,19 @@ Route::prefix('v1')->group(function () {
             Route::delete('{noteTag}', [NoteTagController::class, 'destroy']);
         });
 
-        // Purchases
+        // Purchases (legacy checklist — preserved)
         Route::apiResource('purchases', PurchaseItemController::class)->except(['show']);
+
+        // Shopping Sessions
+        Route::prefix('shopping')->group(function () {
+            Route::get('sessions', [ShoppingSessionController::class, 'index']);
+            Route::post('sessions', [ShoppingSessionController::class, 'store']);
+            Route::get('sessions/{session}', [ShoppingSessionController::class, 'show']);
+            Route::post('sessions/{session}/finish', [ShoppingSessionController::class, 'finish']);
+            Route::delete('sessions/{session}', [ShoppingSessionController::class, 'destroy']);
+            Route::post('sessions/{session}/items', [ShoppingItemController::class, 'store']);
+            Route::put('items/{item}', [ShoppingItemController::class, 'update']);
+            Route::delete('items/{item}', [ShoppingItemController::class, 'destroy']);
+        });
     });
 });
