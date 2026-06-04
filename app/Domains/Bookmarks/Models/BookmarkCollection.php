@@ -25,6 +25,10 @@ class BookmarkCollection extends Model
         'position',
     ];
 
+    protected $attributes = [
+        'position' => 0,
+    ];
+
     protected $casts = [
         'position' => 'integer',
     ];

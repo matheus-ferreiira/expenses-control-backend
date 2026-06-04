@@ -25,6 +25,11 @@ class Bookmark extends Model
         'position',
     ];
 
+    protected $attributes = [
+        'position' => 0,
+        'is_favorite' => false,
+    ];
+
     protected $casts = [
         'is_favorite' => 'boolean',
         'position' => 'integer',
