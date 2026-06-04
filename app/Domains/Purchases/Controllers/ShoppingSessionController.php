@@ -28,6 +28,7 @@ class ShoppingSessionController extends Controller
         $session = ShoppingSession::create([
             'user_id' => $request->user()->id,
             'title' => $request->title,
+            'status' => 'active',
         ]);
 
         return $this->created(new ShoppingSessionResource($session->load('items')), 'Sessão criada');

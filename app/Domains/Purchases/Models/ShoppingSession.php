@@ -22,6 +22,10 @@ class ShoppingSession extends Model
         'transaction_id',
     ];
 
+    protected $attributes = [
+        'status' => 'active',
+    ];
+
     protected $casts = [
         'total' => 'float',
         'finished_at' => 'datetime',
