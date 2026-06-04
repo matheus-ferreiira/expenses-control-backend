@@ -2,14 +2,21 @@
 
 namespace App\Domains\Purchases\Models;
 
+use Database\Factories\ShoppingItemFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ShoppingItem extends Model
 {
-    use HasUuids, SoftDeletes;
+    use HasFactory, HasUuids, SoftDeletes;
+
+    protected static function newFactory(): ShoppingItemFactory
+    {
+        return ShoppingItemFactory::new();
+    }
 
     protected $fillable = [
         'shopping_session_id',
