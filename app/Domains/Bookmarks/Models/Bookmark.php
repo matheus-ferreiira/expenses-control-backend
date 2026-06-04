@@ -16,7 +16,7 @@ class Bookmark extends Model
     use HasFactory, HasUuids, SoftDeletes;
 
     protected $fillable = [
-        'bookmark_category_id',
+        'bookmark_collection_id',
         'user_id',
         'title',
         'url',
@@ -40,9 +40,9 @@ class Bookmark extends Model
         return BookmarkFactory::new();
     }
 
-    public function category(): BelongsTo
+    public function collection(): BelongsTo
     {
-        return $this->belongsTo(BookmarkCategory::class, 'bookmark_category_id');
+        return $this->belongsTo(BookmarkCollection::class, 'bookmark_collection_id');
     }
 
     public function user(): BelongsTo
@@ -53,6 +53,11 @@ class Bookmark extends Model
     public function scopeForUser(Builder $query, string $userId): Builder
     {
         return $query->where('user_id', $userId);
+    }
+
+    public function scopeForCollection(Builder $query, string $collectionId): Builder
+    {
+        return $query->where('bookmark_collection_id', $collectionId);
     }
 
     public function scopeFavorites(Builder $query): Builder

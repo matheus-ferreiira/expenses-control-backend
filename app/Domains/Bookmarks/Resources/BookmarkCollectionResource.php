@@ -16,7 +16,7 @@ class BookmarkCollectionResource extends JsonResource
             'color' => $this->color,
             'position' => $this->position,
             'bookmarks_count' => $this->bookmarks_count ?? 0,
-            'categories' => BookmarkCategoryResource::collection($this->whenLoaded('categories')),
+            'created_at' => $this->created_at?->toISOString(),
         ];
     }
 }

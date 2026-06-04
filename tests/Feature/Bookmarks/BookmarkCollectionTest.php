@@ -3,7 +3,6 @@
 namespace Tests\Feature\Bookmarks;
 
 use App\Domains\Bookmarks\Models\Bookmark;
-use App\Domains\Bookmarks\Models\BookmarkCategory;
 use App\Domains\Bookmarks\Models\BookmarkCollection;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -131,12 +130,8 @@ class BookmarkCollectionTest extends TestCase
     {
         $user = User::factory()->create();
         $collection = BookmarkCollection::factory()->create(['user_id' => $user->id]);
-        $category = BookmarkCategory::factory()->create([
-            'bookmark_collection_id' => $collection->id,
-            'user_id' => $user->id,
-        ]);
         Bookmark::factory()->count(3)->create([
-            'bookmark_category_id' => $category->id,
+            'bookmark_collection_id' => $collection->id,
             'user_id' => $user->id,
         ]);
 

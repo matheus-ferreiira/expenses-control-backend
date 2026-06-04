@@ -17,7 +17,6 @@ class BookmarkCollectionController extends Controller
     {
         $collections = BookmarkCollection::forUser($request->user()->id)
             ->withCount('bookmarks')
-            ->with(['categories' => fn ($q) => $q->ordered()->withCount('bookmarks')])
             ->ordered()
             ->get();
 

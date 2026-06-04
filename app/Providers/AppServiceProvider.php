@@ -3,9 +3,7 @@
 namespace App\Providers;
 
 use App\Domains\Bookmarks\Models\Bookmark;
-use App\Domains\Bookmarks\Models\BookmarkCategory;
 use App\Domains\Bookmarks\Models\BookmarkCollection;
-use App\Domains\Bookmarks\Policies\BookmarkCategoryPolicy;
 use App\Domains\Bookmarks\Policies\BookmarkCollectionPolicy;
 use App\Domains\Bookmarks\Policies\BookmarkPolicy;
 use App\Domains\Calendar\Models\CalendarEvent;
@@ -52,7 +50,6 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::policy(BookmarkCollection::class, BookmarkCollectionPolicy::class);
-        Gate::policy(BookmarkCategory::class, BookmarkCategoryPolicy::class);
         Gate::policy(Bookmark::class, BookmarkPolicy::class);
         Gate::policy(Task::class, TaskPolicy::class);
         Gate::policy(TaskLabel::class, TaskLabelPolicy::class);

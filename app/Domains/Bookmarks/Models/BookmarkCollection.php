@@ -10,7 +10,6 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class BookmarkCollection extends Model
@@ -43,14 +42,9 @@ class BookmarkCollection extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function categories(): HasMany
+    public function bookmarks(): HasMany
     {
-        return $this->hasMany(BookmarkCategory::class);
-    }
-
-    public function bookmarks(): HasManyThrough
-    {
-        return $this->hasManyThrough(Bookmark::class, BookmarkCategory::class);
+        return $this->hasMany(Bookmark::class);
     }
 
     public function scopeForUser(Builder $query, string $userId): Builder

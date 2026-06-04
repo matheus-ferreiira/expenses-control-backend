@@ -3,7 +3,7 @@
 namespace App\Domains\Bookmarks\Controllers;
 
 use App\Domains\Bookmarks\Models\Bookmark;
-use App\Domains\Bookmarks\Models\BookmarkCategory;
+use App\Domains\Bookmarks\Models\BookmarkCollection;
 use App\Domains\Bookmarks\Requests\ReorderRequest;
 use App\Domains\Bookmarks\Requests\StoreBookmarkRequest;
 use App\Domains\Bookmarks\Requests\UpdateBookmarkRequest;
@@ -14,11 +14,11 @@ use Illuminate\Http\Request;
 
 class BookmarkController extends Controller
 {
-    public function index(Request $request, BookmarkCategory $category): JsonResponse
+    public function index(Request $request, BookmarkCollection $collection): JsonResponse
     {
-        $this->authorize('view', $category);
+        $this->authorize('view', $collection);
 
-        $query = Bookmark::where('bookmark_category_id', $category->id)->ordered();
+        $query = Bookmark::where('bookmark_collection_id', $collection->id)->ordered();
 
         if ($request->filled('search')) {
             $query->search($request->search);
@@ -31,12 +31,12 @@ class BookmarkController extends Controller
         return $this->success(BookmarkResource::collection($query->get()));
     }
 
-    public function store(StoreBookmarkRequest $request, BookmarkCategory $category): JsonResponse
+    public function store(StoreBookmarkRequest $request, BookmarkCollection $collection): JsonResponse
     {
-        $this->authorize('update', $category);
+        $this->authorize('update', $collection);
 
         $bookmark = Bookmark::create([
-            'bookmark_category_id' => $category->id,
+            'bookmark_collection_id' => $collection->id,
             'user_id' => $request->user()->id,
             ...$request->validated(),
         ]);
@@ -47,13 +47,6 @@ class BookmarkController extends Controller
     public function update(UpdateBookmarkRequest $request, Bookmark $bookmark): JsonResponse
     {
         $this->authorize('update', $bookmark);
-
-        if ($request->has('bookmark_category_id')) {
-            $newCategory = BookmarkCategory::findOrFail($request->bookmark_category_id);
-            if ($newCategory->user_id !== $request->user()->id) {
-                return $this->error('Categoria não encontrada', 403);
-            }
-        }
 
         $bookmark->update($request->validated());
 
@@ -78,13 +71,13 @@ class BookmarkController extends Controller
         return $this->success(new BookmarkResource($bookmark), 'Favorito atualizado');
     }
 
-    public function reorder(ReorderRequest $request, BookmarkCategory $category): JsonResponse
+    public function reorder(ReorderRequest $request, BookmarkCollection $collection): JsonResponse
     {
-        $this->authorize('update', $category);
+        $this->authorize('update', $collection);
 
         foreach ($request->items as $item) {
             Bookmark::where('id', $item['id'])
-                ->where('bookmark_category_id', $category->id)
+                ->where('bookmark_collection_id', $collection->id)
                 ->where('user_id', $request->user()->id)
                 ->update(['position' => $item['position']]);
         }

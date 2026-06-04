@@ -3,7 +3,7 @@
 namespace Database\Factories;
 
 use App\Domains\Bookmarks\Models\Bookmark;
-use App\Domains\Bookmarks\Models\BookmarkCategory;
+use App\Domains\Bookmarks\Models\BookmarkCollection;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -14,7 +14,7 @@ class BookmarkFactory extends Factory
     public function definition(): array
     {
         return [
-            'bookmark_category_id' => BookmarkCategory::factory(),
+            'bookmark_collection_id' => BookmarkCollection::factory(),
             'user_id' => User::factory(),
             'title' => $this->faker->words(3, true),
             'url' => $this->faker->url(),
