@@ -1,6 +1,9 @@
 <?php
 
 use App\Domains\Auth\Controllers\AuthController;
+use App\Domains\Bookmarks\Controllers\BookmarkCategoryController;
+use App\Domains\Bookmarks\Controllers\BookmarkCollectionController;
+use App\Domains\Bookmarks\Controllers\BookmarkController;
 use App\Domains\Calendar\Controllers\CalendarEventController;
 use App\Domains\Finance\Controllers\BankAccountController;
 use App\Domains\Finance\Controllers\BudgetController;
@@ -198,6 +201,31 @@ Route::prefix('v1')->group(function () {
             Route::post('/', [NoteTagController::class, 'store']);
             Route::put('{noteTag}', [NoteTagController::class, 'update']);
             Route::delete('{noteTag}', [NoteTagController::class, 'destroy']);
+        });
+
+        // Bookmarks
+        Route::prefix('bookmarks')->group(function () {
+            // Collections — reorder BEFORE parameterized route
+            Route::post('collections/reorder', [BookmarkCollectionController::class, 'reorder']);
+            Route::get('collections', [BookmarkCollectionController::class, 'index']);
+            Route::post('collections', [BookmarkCollectionController::class, 'store']);
+            Route::put('collections/{collection}', [BookmarkCollectionController::class, 'update']);
+            Route::delete('collections/{collection}', [BookmarkCollectionController::class, 'destroy']);
+
+            // Categories — reorder BEFORE parameterized route
+            Route::post('collections/{collection}/categories/reorder', [BookmarkCategoryController::class, 'reorder']);
+            Route::get('collections/{collection}/categories', [BookmarkCategoryController::class, 'index']);
+            Route::post('collections/{collection}/categories', [BookmarkCategoryController::class, 'store']);
+            Route::put('categories/{category}', [BookmarkCategoryController::class, 'update']);
+            Route::delete('categories/{category}', [BookmarkCategoryController::class, 'destroy']);
+
+            // Bookmarks — reorder BEFORE parameterized route
+            Route::post('categories/{category}/bookmarks/reorder', [BookmarkController::class, 'reorder']);
+            Route::get('categories/{category}/bookmarks', [BookmarkController::class, 'index']);
+            Route::post('categories/{category}/bookmarks', [BookmarkController::class, 'store']);
+            Route::put('bookmarks/{bookmark}', [BookmarkController::class, 'update']);
+            Route::delete('bookmarks/{bookmark}', [BookmarkController::class, 'destroy']);
+            Route::patch('bookmarks/{bookmark}/favorite', [BookmarkController::class, 'toggleFavorite']);
         });
 
         // Purchases (legacy checklist — preserved)
