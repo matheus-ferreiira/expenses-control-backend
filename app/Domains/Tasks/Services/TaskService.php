@@ -50,7 +50,7 @@ final class TaskService
         }
 
         if (! empty($filters['search'])) {
-            $query->where('title', 'ilike', "%{$filters['search']}%");
+            $query->where('title', 'like', "%{$filters['search']}%");
         }
 
         if (! empty($filters['due_date'])) {
