@@ -209,6 +209,65 @@ class TasksTest extends TestCase
         $this->assertTrue($overdue->contains($pending->id));
     }
 
+    // ── due_time persistence ──────────────────────────────────────────────────
+
+    public function test_due_time_is_persisted_when_creating_task(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/tasks', [
+                'title' => 'Task with time',
+                'due_date' => '2026-12-25',
+                'due_time' => '14:30',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.due_time', '14:30');
+
+        $task = Task::where('user_id', $user->id)->where('title', 'Task with time')->first();
+        $this->assertEquals('14:30', $task->due_date->format('H:i'));
+    }
+
+    public function test_due_time_is_persisted_when_updating_task(): void
+    {
+        $user = User::factory()->create();
+        $task = Task::factory()->create(['user_id' => $user->id, 'due_date' => '2026-12-25']);
+
+        $this->actingAs($user, 'sanctum')
+            ->putJson("/api/v1/tasks/{$task->id}", [
+                'due_date' => '2026-12-25',
+                'due_time' => '09:00',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.due_time', '09:00');
+    }
+
+    public function test_due_time_returns_null_when_no_time_is_set(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/tasks', [
+                'title' => 'Task without time',
+                'due_date' => '2026-12-25',
+            ])
+            ->assertCreated();
+
+        $this->assertNull($response->json('data.due_time'));
+    }
+
+    public function test_invalid_due_time_format_is_rejected(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/tasks', [
+                'title' => 'Task',
+                'due_time' => 'not-a-time',
+            ])
+            ->assertUnprocessable();
+    }
+
     // ── Label Ownership ───────────────────────────────────────────────────────
 
     public function test_user_cannot_attach_label_belonging_to_another_user(): void

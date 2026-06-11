@@ -19,6 +19,7 @@ class UpdateTaskRequest extends BaseFormRequest
             'priority' => ['nullable', new Enum(TaskPriority::class)],
             'status' => ['nullable', new Enum(TaskStatus::class)],
             'due_date' => ['nullable', 'date'],
+            'due_time' => ['sometimes', 'nullable', 'date_format:H:i'],
             'recurrence_type' => ['nullable', new Enum(RecurrenceType::class)],
             'recurrence_config' => ['nullable', 'array'],
             'label_ids' => ['nullable', 'array'],

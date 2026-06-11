@@ -17,7 +17,11 @@ final class UpdateTaskAction
             'status' => $dto->status ?? $task->status,
             'recurrence_type' => $dto->recurrenceType ?? $task->recurrence_type,
             'description' => $has('description') ? $dto->description : $task->description,
-            'due_date' => $has('due_date') ? $dto->dueDate : $task->due_date,
+            'due_date' => $has('due_date')
+                ? ($dto->dueDate
+                    ? \Carbon\Carbon::parse($dto->dueDate . ($dto->dueTime ? ' ' . $dto->dueTime : ''))
+                    : null)
+                : $task->due_date,
             'recurrence_config' => $has('recurrence_config') ? $dto->recurrenceConfig : $task->recurrence_config,
         ]);
 

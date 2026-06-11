@@ -24,7 +24,9 @@ final class CreateTaskAction
                 'description' => $dto->description,
                 'priority' => $dto->priority ?? TaskPriority::Normal,
                 'status' => $dto->status ?? TaskStatus::Pending,
-                'due_date' => $dto->dueDate,
+                'due_date' => $dto->dueDate
+                    ? \Carbon\Carbon::parse($dto->dueDate . ($dto->dueTime ? ' ' . $dto->dueTime : ''))
+                    : null,
                 'recurrence_type' => $dto->recurrenceType ?? RecurrenceType::None,
                 'recurrence_config' => $dto->recurrenceConfig,
                 'position' => $position,
