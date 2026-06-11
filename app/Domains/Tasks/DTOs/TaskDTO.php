@@ -19,6 +19,9 @@ final readonly class TaskDTO
         public ?array $recurrenceConfig = null,
         public ?int $position = null,
         public ?array $labelIds = null,
+        public ?array $tagIds = null,
+        public ?string $taskListId = null,
+        public ?int $estimatedMinutes = null,
         public array $provided = [],
     ) {}
 
@@ -35,6 +38,9 @@ final readonly class TaskDTO
             recurrenceConfig: $data['recurrence_config'] ?? null,
             position: $data['position'] ?? null,
             labelIds: array_key_exists('label_ids', $data) ? ($data['label_ids'] ?? []) : null,
+            tagIds: array_key_exists('tag_ids', $data) ? ($data['tag_ids'] ?? []) : null,
+            taskListId: $data['task_list_id'] ?? null,
+            estimatedMinutes: $data['estimated_minutes'] ?? null,
             provided: array_keys($data),
         );
     }

@@ -23,12 +23,18 @@ final class UpdateTaskAction
                     : null)
                 : $task->due_date,
             'recurrence_config' => $has('recurrence_config') ? $dto->recurrenceConfig : $task->recurrence_config,
+            'task_list_id' => $has('task_list_id') ? $dto->taskListId : $task->task_list_id,
+            'estimated_minutes' => $has('estimated_minutes') ? $dto->estimatedMinutes : $task->estimated_minutes,
         ]);
 
         if ($dto->labelIds !== null) {
             $task->labels()->sync($dto->labelIds);
         }
 
-        return $task->load(['labels', 'subtasks']);
+        if ($dto->tagIds !== null) {
+            $task->tags()->sync($dto->tagIds);
+        }
+
+        return $task->load(['labels', 'subtasks', 'tags', 'taskList']);
     }
 }

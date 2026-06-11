@@ -13,11 +13,14 @@ class Subtask extends Model
 {
     use HasFactory, HasUuids, SoftDeletes;
 
-    protected $fillable = ['task_id', 'title', 'completed', 'position'];
+    protected $table = 'task_subtasks';
+
+    protected $fillable = ['task_id', 'title', 'is_completed', 'position', 'completed_at'];
 
     protected $casts = [
-        'completed' => 'boolean',
+        'is_completed' => 'boolean',
         'position' => 'integer',
+        'completed_at' => 'datetime',
     ];
 
     protected static function newFactory(): SubtaskFactory

@@ -35,8 +35,12 @@ class SubtaskController extends Controller
 
         $data = $request->validate([
             'title' => ['sometimes', 'required', 'string', 'max:500'],
-            'completed' => ['sometimes', 'boolean'],
+            'is_completed' => ['sometimes', 'boolean'],
         ]);
+
+        if (isset($data['is_completed'])) {
+            $data['completed_at'] = $data['is_completed'] ? now() : null;
+        }
 
         $subtask->update($data);
 

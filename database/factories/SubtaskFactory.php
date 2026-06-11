@@ -15,7 +15,7 @@ class SubtaskFactory extends Factory
         return [
             'task_id' => Task::factory(),
             'title' => fake()->sentence(3),
-            'completed' => false,
+            'is_completed' => false,
             'position' => fake()->numberBetween(1, 100),
         ];
     }

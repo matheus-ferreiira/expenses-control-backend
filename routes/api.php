@@ -24,6 +24,8 @@ use App\Domains\Reports\Controllers\ReportController;
 use App\Domains\Tasks\Controllers\SubtaskController;
 use App\Domains\Tasks\Controllers\TaskController;
 use App\Domains\Tasks\Controllers\TaskLabelController;
+use App\Domains\Tasks\Controllers\TaskListController;
+use App\Domains\Tasks\Controllers\TaskTagController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function () {
@@ -77,6 +79,12 @@ Route::prefix('v1')->group(function () {
 
         // Task Labels
         Route::apiResource('task-labels', TaskLabelController::class)->except(['show']);
+
+        // Task Lists
+        Route::apiResource('task-lists', TaskListController::class)->except(['show']);
+
+        // Task Tags
+        Route::apiResource('task-tags', TaskTagController::class)->except(['show']);
 
         // Habits
         Route::prefix('habits')->group(function () {

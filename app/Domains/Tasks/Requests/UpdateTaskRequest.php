@@ -24,6 +24,10 @@ class UpdateTaskRequest extends BaseFormRequest
             'recurrence_config' => ['nullable', 'array'],
             'label_ids' => ['nullable', 'array'],
             'label_ids.*' => ['uuid', Rule::exists('task_labels', 'id')->where('user_id', $this->user()->id)],
+            'tag_ids' => ['nullable', 'array'],
+            'tag_ids.*' => ['uuid', Rule::exists('task_tags', 'id')->where('user_id', $this->user()->id)],
+            'task_list_id' => ['sometimes', 'nullable', 'uuid', Rule::exists('task_lists', 'id')->where('user_id', $this->user()->id)],
+            'estimated_minutes' => ['nullable', 'integer', 'min:1'],
         ];
     }
 }

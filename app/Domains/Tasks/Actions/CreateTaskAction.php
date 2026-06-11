@@ -20,6 +20,7 @@ final class CreateTaskAction
 
             $task = Task::create([
                 'user_id' => $user->id,
+                'task_list_id' => $dto->taskListId,
                 'title' => $dto->title,
                 'description' => $dto->description,
                 'priority' => $dto->priority ?? TaskPriority::Normal,
@@ -30,15 +31,20 @@ final class CreateTaskAction
                 'recurrence_type' => $dto->recurrenceType ?? RecurrenceType::None,
                 'recurrence_config' => $dto->recurrenceConfig,
                 'position' => $position,
+                'estimated_minutes' => $dto->estimatedMinutes,
             ]);
 
             if (! empty($dto->labelIds)) {
                 $task->labels()->sync($dto->labelIds);
             }
 
+            if (! empty($dto->tagIds)) {
+                $task->tags()->sync($dto->tagIds);
+            }
+
             return $task;
         });
 
-        return $task->load(['labels', 'subtasks']);
+        return $task->load(['labels', 'subtasks', 'tags', 'taskList']);
     }
 }

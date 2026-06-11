@@ -38,8 +38,12 @@ use App\Domains\Purchases\Policies\ShoppingItemPolicy;
 use App\Domains\Purchases\Policies\ShoppingSessionPolicy;
 use App\Domains\Tasks\Models\Task;
 use App\Domains\Tasks\Models\TaskLabel;
+use App\Domains\Tasks\Models\TaskList;
+use App\Domains\Tasks\Models\TaskTag;
 use App\Domains\Tasks\Policies\TaskLabelPolicy;
+use App\Domains\Tasks\Policies\TaskListPolicy;
 use App\Domains\Tasks\Policies\TaskPolicy;
+use App\Domains\Tasks\Policies\TaskTagPolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
@@ -53,6 +57,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Bookmark::class, BookmarkPolicy::class);
         Gate::policy(Task::class, TaskPolicy::class);
         Gate::policy(TaskLabel::class, TaskLabelPolicy::class);
+        Gate::policy(TaskList::class, TaskListPolicy::class);
+        Gate::policy(TaskTag::class, TaskTagPolicy::class);
         Gate::policy(Habit::class, HabitPolicy::class);
         Gate::policy(BankAccount::class, BankAccountPolicy::class);
         Gate::policy(Budget::class, BudgetPolicy::class);

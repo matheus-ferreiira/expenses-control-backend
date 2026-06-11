@@ -22,6 +22,7 @@ class Task extends Model
 
     protected $fillable = [
         'user_id',
+        'task_list_id',
         'title',
         'description',
         'priority',
@@ -30,8 +31,10 @@ class Task extends Model
         'completed_at',
         'recurrence_type',
         'recurrence_config',
+        'next_occurrence_date',
         'position',
         'is_archived',
+        'estimated_minutes',
     ];
 
     protected $casts = [
@@ -41,8 +44,10 @@ class Task extends Model
         'recurrence_config' => 'array',
         'due_date' => 'datetime',
         'completed_at' => 'datetime',
+        'next_occurrence_date' => 'datetime',
         'is_archived' => 'boolean',
         'position' => 'integer',
+        'estimated_minutes' => 'integer',
     ];
 
     protected static function newFactory(): TaskFactory
@@ -55,6 +60,11 @@ class Task extends Model
         return $this->belongsTo(User::class);
     }
 
+    public function taskList(): BelongsTo
+    {
+        return $this->belongsTo(TaskList::class, 'task_list_id');
+    }
+
     public function subtasks(): HasMany
     {
         return $this->hasMany(Subtask::class)->orderBy('position');
@@ -63,6 +73,11 @@ class Task extends Model
     public function labels(): BelongsToMany
     {
         return $this->belongsToMany(TaskLabel::class, 'task_label_task', 'task_id', 'task_label_id');
+    }
+
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(TaskTag::class, 'task_tag_task', 'task_id', 'tag_id');
     }
 
     public function scopeForUser(Builder $query, string $userId): Builder

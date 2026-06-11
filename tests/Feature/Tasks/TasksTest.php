@@ -135,7 +135,7 @@ class TasksTest extends TestCase
             ])
             ->assertForbidden();
 
-        $this->assertDatabaseHas('subtasks', ['id' => $subtask->id, 'title' => 'original']);
+        $this->assertDatabaseHas('task_subtasks', ['id' => $subtask->id, 'title' => 'original']);
     }
 
     public function test_subtask_from_different_task_returns_404(): void
@@ -152,7 +152,7 @@ class TasksTest extends TestCase
             ])
             ->assertNotFound();
 
-        $this->assertDatabaseHas('subtasks', ['id' => $subtask->id, 'title' => 'original']);
+        $this->assertDatabaseHas('task_subtasks', ['id' => $subtask->id, 'title' => 'original']);
     }
 
     public function test_user_cannot_delete_subtask_belonging_to_another_users_task(): void
@@ -168,7 +168,7 @@ class TasksTest extends TestCase
             ->deleteJson("/api/v1/tasks/{$task->id}/subtasks/{$subtask->id}")
             ->assertForbidden();
 
-        $this->assertDatabaseHas('subtasks', ['id' => $subtask->id]);
+        $this->assertDatabaseHas('task_subtasks', ['id' => $subtask->id]);
     }
 
     // ── Complete Task Enum ────────────────────────────────────────────────────

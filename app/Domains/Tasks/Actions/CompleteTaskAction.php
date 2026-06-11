@@ -14,7 +14,7 @@ final class CompleteTaskAction
             'completed_at' => now(),
         ]);
 
-        $task->subtasks()->update(['completed' => true]);
+        $task->subtasks()->update(['is_completed' => true, 'completed_at' => now()]);
 
         return $task->load(['labels', 'subtasks']);
     }
