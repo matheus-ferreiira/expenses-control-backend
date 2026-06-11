@@ -7,6 +7,10 @@ use App\Domains\Tasks\Models\Task;
 
 final class CompleteTaskAction
 {
+    public function __construct(
+        private readonly GenerateNextOccurrenceAction $generateNext,
+    ) {}
+
     public function execute(Task $task): Task
     {
         $task->update([
@@ -16,6 +20,11 @@ final class CompleteTaskAction
 
         $task->subtasks()->update(['is_completed' => true, 'completed_at' => now()]);
 
-        return $task->load(['labels', 'subtasks']);
+        // Load relations needed for recurrence generation
+        $task->loadMissing(['labels', 'subtasks', 'tags']);
+
+        $this->generateNext->execute($task);
+
+        return $task->load(['labels', 'subtasks', 'tags', 'taskList']);
     }
 }
