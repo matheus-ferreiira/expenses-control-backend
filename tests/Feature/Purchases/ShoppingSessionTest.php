@@ -108,14 +108,16 @@ class ShoppingSessionTest extends TestCase
         $this->assertSoftDeleted('shopping_sessions', ['id' => $session->id]);
     }
 
-    public function test_cannot_delete_a_finished_session(): void
+    public function test_can_delete_a_finished_session(): void
     {
         $user = User::factory()->create();
         $session = ShoppingSession::factory()->finished()->create(['user_id' => $user->id]);
 
         $this->actingAs($user, 'sanctum')
             ->deleteJson("/api/v1/shopping/sessions/{$session->id}")
-            ->assertStatus(422);
+            ->assertNoContent();
+
+        $this->assertSoftDeleted('shopping_sessions', ['id' => $session->id]);
     }
 
     public function test_cannot_delete_a_session_of_another_user(): void
@@ -355,5 +357,69 @@ class ShoppingSessionTest extends TestCase
             ->assertOk();
 
         $this->assertEquals($new->id, $response->json('data.0.id'));
+    }
+
+    // ── Update ────────────────────────────────────────────────────────────────
+
+    public function test_updates_session_title(): void
+    {
+        $user = User::factory()->create();
+        $session = ShoppingSession::factory()->create(['user_id' => $user->id, 'title' => 'Lista original']);
+
+        $this->actingAs($user, 'sanctum')
+            ->putJson("/api/v1/shopping/sessions/{$session->id}", ['title' => 'Lista nova'])
+            ->assertOk()
+            ->assertJsonPath('data.title', 'Lista nova');
+
+        $this->assertDatabaseHas('shopping_sessions', ['id' => $session->id, 'title' => 'Lista nova']);
+    }
+
+    public function test_cannot_update_session_of_another_user(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+        $session = ShoppingSession::factory()->create(['user_id' => $other->id]);
+
+        $this->actingAs($user, 'sanctum')
+            ->putJson("/api/v1/shopping/sessions/{$session->id}", ['title' => 'hack'])
+            ->assertForbidden();
+    }
+
+    // ── Reopen ────────────────────────────────────────────────────────────────
+
+    public function test_reopens_a_finished_session(): void
+    {
+        $user = User::factory()->create();
+        $session = ShoppingSession::factory()->finished()->create(['user_id' => $user->id]);
+
+        $this->actingAs($user, 'sanctum')
+            ->patchJson("/api/v1/shopping/sessions/{$session->id}/reopen")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'active');
+
+        $session->refresh();
+        $this->assertEquals('active', $session->status);
+        $this->assertNull($session->finished_at);
+    }
+
+    public function test_cannot_reopen_an_active_session(): void
+    {
+        $user = User::factory()->create();
+        $session = ShoppingSession::factory()->create(['user_id' => $user->id, 'status' => 'active']);
+
+        $this->actingAs($user, 'sanctum')
+            ->patchJson("/api/v1/shopping/sessions/{$session->id}/reopen")
+            ->assertStatus(422);
+    }
+
+    public function test_cannot_reopen_session_of_another_user(): void
+    {
+        $user = User::factory()->create();
+        $other = User::factory()->create();
+        $session = ShoppingSession::factory()->finished()->create(['user_id' => $other->id]);
+
+        $this->actingAs($user, 'sanctum')
+            ->patchJson("/api/v1/shopping/sessions/{$session->id}/reopen")
+            ->assertForbidden();
     }
 }

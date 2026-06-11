@@ -6,6 +6,7 @@ use App\Domains\Finance\Models\Transaction;
 use App\Domains\Purchases\Models\ShoppingSession;
 use App\Domains\Purchases\Requests\FinishShoppingSessionRequest;
 use App\Domains\Purchases\Requests\StoreShoppingSessionRequest;
+use App\Domains\Purchases\Requests\UpdateShoppingSessionRequest;
 use App\Domains\Purchases\Resources\ShoppingSessionResource;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
@@ -73,14 +74,36 @@ class ShoppingSessionController extends Controller
         return $this->success(new ShoppingSessionResource($session->load('items')), 'Compra finalizada');
     }
 
+    public function update(UpdateShoppingSessionRequest $request, ShoppingSession $session): JsonResponse
+    {
+        $this->authorize('update', $session);
+
+        $session->update($request->validated());
+
+        return $this->success(new ShoppingSessionResource($session->load('items')));
+    }
+
+    public function reopen(Request $request, ShoppingSession $session): JsonResponse
+    {
+        $this->authorize('update', $session);
+
+        if ($session->status !== 'finished') {
+            return $this->error('Sessão já está ativa', 422);
+        }
+
+        $session->update([
+            'status'         => 'active',
+            'finished_at'    => null,
+            'total'          => null,
+            'transaction_id' => null,
+        ]);
+
+        return $this->success(new ShoppingSessionResource($session->load('items')), 'Sessão reaberta');
+    }
+
     public function destroy(Request $request, ShoppingSession $session): JsonResponse
     {
         $this->authorize('delete', $session);
-
-        if ($session->status !== 'active') {
-            return $this->error('Apenas sessões ativas podem ser excluídas', 422);
-        }
-
         $session->delete();
 
         return $this->noContent();
