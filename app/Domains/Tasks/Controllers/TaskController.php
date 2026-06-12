@@ -90,4 +90,48 @@ class TaskController extends Controller
 
         return $this->success(message: 'Tasks reordered');
     }
+
+    public function recurrenceHistory(Request $request, Task $task): JsonResponse
+    {
+        $this->authorize('view', $task);
+
+        $rootId = $task->parent_task_id ?? $task->id;
+
+        $occurrences = Task::withTrashed()
+            ->where(function ($q) use ($rootId) {
+                $q->where('id', $rootId)->orWhere('parent_task_id', $rootId);
+            })
+            ->orderBy('due_date')
+            ->get();
+
+        $totalCount = $occurrences->count();
+        $completed = $occurrences->filter(fn ($t) => $t->status?->value === 'completed')
+            ->sortByDesc('completed_at')
+            ->values();
+        $completedCount = $completed->count();
+
+        // Streak: count consecutive completions from end of due_date-sorted list
+        $streak = 0;
+        foreach ($occurrences->reverse() as $occ) {
+            if ($occ->status?->value === 'completed') {
+                $streak++;
+            } else {
+                break;
+            }
+        }
+
+        $recentCompletions = $completed->take(10)->map(fn ($t) => [
+            'id' => $t->id,
+            'completed_at' => $t->completed_at?->toISOString(),
+            'due_date' => $t->due_date?->toDateString(),
+        ])->values();
+
+        return $this->success([
+            'total_count' => $totalCount,
+            'completed_count' => $completedCount,
+            'completion_rate' => $totalCount > 0 ? (int) round(($completedCount / $totalCount) * 100) : 0,
+            'current_streak' => $streak,
+            'recent_completions' => $recentCompletions,
+        ]);
+    }
 }

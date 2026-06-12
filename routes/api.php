@@ -70,6 +70,7 @@ Route::prefix('v1')->group(function () {
             Route::patch('{task}/complete', [TaskController::class, 'complete']);
             Route::patch('{task}/archive', [TaskController::class, 'archive']);
             Route::patch('{task}/unarchive', [TaskController::class, 'unarchive']);
+            Route::get('{task}/recurrence-history', [TaskController::class, 'recurrenceHistory']);
 
             // Subtasks
             Route::post('{task}/subtasks', [SubtaskController::class, 'store']);

@@ -22,6 +22,7 @@ class Task extends Model
 
     protected $fillable = [
         'user_id',
+        'parent_task_id',
         'task_list_id',
         'title',
         'description',
@@ -58,6 +59,16 @@ class Task extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(Task::class, 'parent_task_id');
+    }
+
+    public function occurrences(): HasMany
+    {
+        return $this->hasMany(Task::class, 'parent_task_id');
     }
 
     public function taskList(): BelongsTo

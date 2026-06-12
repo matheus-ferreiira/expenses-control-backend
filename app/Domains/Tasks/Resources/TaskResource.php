@@ -23,8 +23,10 @@ class TaskResource extends JsonResource
                 ? $dueDate->format('H:i')
                 : null,
             'completed_at' => $this->completed_at?->toISOString(),
-            'is_recurring' => $this->recurrence_type?->value !== null && $this->recurrence_type?->value !== 'none',
-            'recurrence_pattern' => $this->recurrence_type?->value !== 'none' ? $this->recurrence_type?->value : null,
+            'recurrence_type' => $this->recurrence_type?->value ?? 'none',
+            'recurrence_config' => $this->recurrence_config,
+            'next_occurrence_date' => $this->next_occurrence_date?->toDateString(),
+            'parent_task_id' => $this->parent_task_id,
             'order' => $this->position,
             'is_archived' => $this->is_archived,
             'task_list' => $this->whenLoaded('taskList', fn () => new TaskListResource($this->taskList)),

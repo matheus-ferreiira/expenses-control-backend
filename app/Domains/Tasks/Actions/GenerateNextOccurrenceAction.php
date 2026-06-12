@@ -23,8 +23,11 @@ final class GenerateNextOccurrenceAction
         $from = $task->due_date ?? now();
         $nextDate = $this->recurrenceService->calculateNextDate($task->recurrence_type, $config, $from);
 
+        $rootId = $task->parent_task_id ?? $task->id;
+
         $next = Task::create([
             'user_id' => $task->user_id,
+            'parent_task_id' => $rootId,
             'task_list_id' => $task->task_list_id,
             'title' => $task->title,
             'description' => $task->description,
