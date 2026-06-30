@@ -132,6 +132,7 @@ final class BankAccountService
         return $account->creditCards()->create([
             'user_id' => $account->user_id,
             ...$data,
+            'is_active' => true,
         ]);
     }
 
