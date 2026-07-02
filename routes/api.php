@@ -16,6 +16,13 @@ use App\Domains\Goals\Controllers\GoalController;
 use App\Domains\Habits\Controllers\HabitController;
 use App\Domains\Notes\Controllers\NoteController;
 use App\Domains\Notes\Controllers\NoteTagController;
+use App\Domains\Prices\Controllers\PriceCategoryController;
+use App\Domains\Prices\Controllers\PriceProductController;
+use App\Domains\Prices\Controllers\PricePurchaseController;
+use App\Domains\Prices\Controllers\PriceRecordController;
+use App\Domains\Prices\Controllers\PriceReportController;
+use App\Domains\Prices\Controllers\PriceSaleController;
+use App\Domains\Prices\Controllers\PriceStoreController;
 use App\Domains\Purchases\Controllers\PurchaseItemController;
 use App\Domains\Purchases\Controllers\ShoppingItemController;
 use App\Domains\Purchases\Controllers\ShoppingSessionController;
@@ -227,6 +234,20 @@ Route::prefix('v1')->group(function () {
             Route::put('links/{bookmark}', [BookmarkController::class, 'update']);
             Route::delete('links/{bookmark}', [BookmarkController::class, 'destroy']);
             Route::patch('links/{bookmark}/favorite', [BookmarkController::class, 'toggleFavorite']);
+        });
+
+        // Price tracking
+        Route::prefix('prices')->group(function () {
+            Route::get('dashboard', [PriceReportController::class, 'dashboard']);
+            Route::get('patrimony', [PriceReportController::class, 'patrimony']);
+            Route::get('compare', [PriceReportController::class, 'compare']);
+            Route::get('products/{product}/price-history', [PriceReportController::class, 'priceHistory']);
+            Route::apiResource('categories', PriceCategoryController::class);
+            Route::apiResource('stores', PriceStoreController::class);
+            Route::apiResource('products', PriceProductController::class);
+            Route::apiResource('price-records', PriceRecordController::class);
+            Route::apiResource('purchases', PricePurchaseController::class);
+            Route::apiResource('sales', PriceSaleController::class);
         });
 
         // Purchases (legacy checklist — preserved)
