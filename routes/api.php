@@ -246,7 +246,7 @@ Route::prefix('v1')->group(function () {
             Route::apiResource('stores', PriceStoreController::class);
             Route::apiResource('products', PriceProductController::class);
             Route::apiResource('price-records', PriceRecordController::class);
-            Route::apiResource('purchases', PricePurchaseController::class);
+            Route::apiResource('purchases', PricePurchaseController::class)->names('prices.purchases');
             Route::apiResource('sales', PriceSaleController::class);
         });
 
