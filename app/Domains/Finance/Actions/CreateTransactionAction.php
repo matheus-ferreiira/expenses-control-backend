@@ -14,6 +14,13 @@ use Illuminate\Support\Str;
 
 final class CreateTransactionAction
 {
+    /**
+     * Rolling materialization window: occurrences are only created up to this many
+     * months ahead. ExtendRecurringTransactionsAction appends the rest as time
+     * advances, so the series never floods the table with years of pending rows.
+     */
+    public const HORIZON_MONTHS = 12;
+
     /** Max occurrences when end_type=never, keyed by frequency. */
     private const MAX_BY_FREQUENCY = [
         'weekly' => 260,  // ~5 years weekly
@@ -108,9 +115,17 @@ final class CreateTransactionAction
             };
 
             $first = null;
+            $horizon = Carbon::today()->addMonthsNoOverflow(self::HORIZON_MONTHS);
 
             for ($i = 0; $i < $occurrenceCount; $i++) {
                 $occurrenceDate = $this->addInterval($baseDate->copy(), $frequency, $i);
+
+                // Rolling window: skip occurrences beyond the horizon (except the first).
+                // ExtendRecurringTransactionsAction materializes them as time advances.
+                if ($i > 0 && $occurrenceDate->greaterThan($horizon)) {
+                    break;
+                }
+
                 $status = $this->resolveStatus($occurrenceDate->toDateString());
 
                 $transaction = Transaction::create([

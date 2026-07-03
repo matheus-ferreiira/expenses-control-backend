@@ -4,6 +4,7 @@ namespace App\Domains\Finance\Services;
 
 use App\Domains\Finance\Actions\ConfirmTransactionAction;
 use App\Domains\Finance\Actions\CreateTransactionAction;
+use App\Domains\Finance\Actions\ExtendRecurringTransactionsAction;
 use App\Domains\Finance\Actions\UpdateTransactionAction;
 use App\Domains\Finance\DTOs\TransactionDTO;
 use App\Domains\Finance\Enums\TransactionType;
@@ -12,6 +13,7 @@ use App\Domains\Finance\Models\Transaction;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 final class TransactionService
@@ -20,10 +22,13 @@ final class TransactionService
         private readonly CreateTransactionAction $createTransaction,
         private readonly UpdateTransactionAction $updateTransaction,
         private readonly ConfirmTransactionAction $confirmTransaction,
+        private readonly ExtendRecurringTransactionsAction $extendRecurrences,
     ) {}
 
     public function list(User $user, array $filters = []): LengthAwarePaginator
     {
+        $this->keepRecurrencesRolling($user);
+
         $query = Transaction::forUser($user->id)
             ->with(['category', 'account', 'destinationAccount', 'card', 'tags', 'goal']);
 
@@ -77,6 +82,21 @@ final class TransactionService
         $query->orderBy($sortBy, $sortDir);
 
         return $query->paginate($filters['per_page'] ?? 20);
+    }
+
+    /**
+     * Lazy daily trigger for the rolling recurrence window — guarantees the series
+     * keep advancing even without a configured cron. Cache::add is atomic: only the
+     * first list() of the day per user pays the cost.
+     */
+    private function keepRecurrencesRolling(User $user): void
+    {
+        $key = 'finance:recurrences-rolled:'.$user->id.':'.now()->toDateString();
+
+        if (Cache::add($key, true, now()->addDay())) {
+            $this->extendRecurrences->pruneForUser($user->id);
+            $this->extendRecurrences->executeForUser($user->id);
+        }
     }
 
     public function create(User $user, TransactionDTO $dto): mixed

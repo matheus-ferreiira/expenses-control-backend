@@ -62,6 +62,27 @@ class TransactionController extends Controller
         return $this->success(new TransactionResource($transaction), 'Transaction confirmed');
     }
 
+    /** Confirm several pending transactions at once (1-tap weekly review). */
+    public function confirmBatch(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:100'],
+            'ids.*' => ['uuid'],
+        ]);
+
+        // Ownership enforced by the forUser scope — foreign ids are silently ignored.
+        $transactions = Transaction::forUser($request->user()->id)
+            ->whereIn('id', $validated['ids'])
+            ->get();
+
+        $confirmed = $transactions->map(fn (Transaction $t) => $this->service->confirm($t));
+
+        return $this->success(
+            TransactionResource::collection($confirmed),
+            "{$confirmed->count()} transações confirmadas",
+        );
+    }
+
     public function destroy(Request $request, Transaction $transaction): JsonResponse
     {
         $this->authorize('delete', $transaction);

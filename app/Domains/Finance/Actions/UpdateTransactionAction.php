@@ -96,8 +96,17 @@ final class UpdateTransactionAction
             default => $maxCount,
         };
 
+        $horizon = Carbon::today()->addMonthsNoOverflow(CreateTransactionAction::HORIZON_MONTHS);
+
         // Start at i=1 — i=0 is the promoted transaction already saved
         for ($i = 1; $i < $total; $i++) {
+            $occurrenceDate = $this->addInterval($baseDate->copy(), $frequency, $i);
+
+            // Rolling window — see CreateTransactionAction::HORIZON_MONTHS
+            if ($occurrenceDate->greaterThan($horizon)) {
+                break;
+            }
+
             Transaction::create([
                 'user_id' => $transaction->user_id,
                 'account_id' => $dto->accountId,
@@ -108,7 +117,7 @@ final class UpdateTransactionAction
                 'amount' => $dto->amount,
                 'description' => $dto->description,
                 'notes' => $dto->notes,
-                'transaction_date' => $this->addInterval($baseDate->copy(), $frequency, $i)->toDateString(),
+                'transaction_date' => $occurrenceDate->toDateString(),
                 'is_recurring' => true,
                 'recurrence_config' => $dto->recurrenceConfig,
                 'recurrence_group_id' => $groupId,

@@ -131,6 +131,7 @@ Route::prefix('v1')->group(function () {
             Route::delete('cards/{creditCard}', [CreditCardController::class, 'destroy']);
 
             // Transactions
+            Route::patch('transactions/confirm-batch', [TransactionController::class, 'confirmBatch']);
             Route::apiResource('transactions', TransactionController::class);
             Route::patch('transactions/{transaction}/confirm', [TransactionController::class, 'confirm']);
 

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Finance;
 
+use App\Domains\Finance\Actions\CreateTransactionAction;
 use App\Domains\Finance\Models\BankAccount;
 use App\Domains\Finance\Models\Transaction;
 use App\Domains\Finance\Models\TransactionCategory;
@@ -104,8 +105,8 @@ class TransactionsTest extends TestCase
         $this->assertEqualsWithDelta(900.00, $account->fresh()->balance, 0.01);
 
         // Verify status distribution
-        $confirmed = \App\Domains\Finance\Models\Transaction::where('status', 'confirmed')->count();
-        $pending = \App\Domains\Finance\Models\Transaction::where('status', 'pending')->count();
+        $confirmed = Transaction::where('status', 'confirmed')->count();
+        $pending = Transaction::where('status', 'pending')->count();
         $this->assertSame(1, $confirmed);
         $this->assertSame(2, $pending);
     }
@@ -218,7 +219,7 @@ class TransactionsTest extends TestCase
 
     // ── Fix (Recurring) Promotion ─────────────────────────────────────────────
 
-    public function test_editing_transaction_to_fix_generates_59_future_pending_occurrences(): void
+    public function test_editing_transaction_to_fix_generates_future_pending_occurrences_within_horizon(): void
     {
         $user = User::factory()->create();
         $account = BankAccount::factory()->create(['user_id' => $user->id, 'balance' => 1000.00]);
@@ -248,8 +249,13 @@ class TransactionsTest extends TestCase
             ])
             ->assertOk();
 
-        // Should now have 60 total: 1 confirmed (original) + 59 pending (future)
-        $this->assertDatabaseCount('transactions', 60);
+        // Rolling window: 1 confirmed (original) + pending occurrences up to the horizon
+        // (~12 months ahead), never the old 60-at-once materialization.
+        $horizon = now()->addMonthsNoOverflow(CreateTransactionAction::HORIZON_MONTHS)->toDateString();
+        $total = Transaction::count();
+        $this->assertGreaterThan(2, $total);
+        $this->assertLessThanOrEqual(CreateTransactionAction::HORIZON_MONTHS + 1, $total);
+        $this->assertSame(0, Transaction::where('transaction_date', '>', $horizon)->count());
 
         // Original should now be confirmed and have a recurrence_group_id
         $original = Transaction::find($transactionId);
@@ -257,11 +263,11 @@ class TransactionsTest extends TestCase
         $this->assertNotNull($original->recurrence_group_id);
         $this->assertSame('confirmed', $original->status->value);
 
-        // All 59 future occurrences should be pending and share the same group
+        // All future occurrences should be pending and share the same group
         $pendingCount = Transaction::where('recurrence_group_id', $original->recurrence_group_id)
             ->where('status', 'pending')
             ->count();
-        $this->assertSame(59, $pendingCount);
+        $this->assertSame($total - 1, $pendingCount);
     }
 
     public function test_list_filters_by_is_recurring(): void
