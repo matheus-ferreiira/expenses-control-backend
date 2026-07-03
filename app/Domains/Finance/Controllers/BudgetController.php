@@ -2,6 +2,7 @@
 
 namespace App\Domains\Finance\Controllers;
 
+use App\Domains\Finance\Actions\SyncBudgetCategoryLimitsAction;
 use App\Domains\Finance\Models\Budget;
 use App\Domains\Finance\Requests\StoreBudgetRequest;
 use App\Domains\Finance\Requests\UpdateBudgetRequest;
@@ -13,6 +14,10 @@ use Illuminate\Http\Request;
 
 class BudgetController extends Controller
 {
+    public function __construct(
+        private readonly SyncBudgetCategoryLimitsAction $syncCategoryLimits,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         $request->validate([
@@ -67,6 +72,8 @@ class BudgetController extends Controller
             }
         }
 
+        $this->syncCategoryLimits->execute($budget);
+
         $budget->load('items.category');
         $startDate = Carbon::create($validated['year'], $validated['month'], 1)->startOfMonth()->toDateString();
         $endDate = Carbon::create($validated['year'], $validated['month'], 1)->endOfMonth()->toDateString();
@@ -102,6 +109,8 @@ class BudgetController extends Controller
                 ]);
             }
         }
+
+        $this->syncCategoryLimits->execute($budget);
 
         $budget->load('items.category');
         $startDate = Carbon::create($budget->year, $budget->month, 1)->startOfMonth()->toDateString();
