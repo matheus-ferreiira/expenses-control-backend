@@ -1,0 +1,213 @@
+- generic:
+  - generic:
+    - generic:
+      - generic:
+        - complementary:
+          - generic:
+            - generic:
+              - generic: Vault
+              - generic: Beta
+            - button:
+              - img
+          - generic:
+            - button:
+              - img
+              - generic: Buscar...
+              - generic: Ctrl K
+            - button:
+              - img
+              - generic: Quick add
+              - generic: "N"
+          - generic:
+            - generic:
+              - generic:
+                - navigation:
+                  - link:
+                    - /url: /dashboard
+                    - img
+                    - generic: Dashboard
+                    - generic: G D
+                  - generic: FINANÇAS
+                  - button:
+                    - img
+                    - generic: Finanças
+                    - img
+                  - link:
+                    - /url: /finance
+                    - img
+                    - generic: Visão Geral
+                  - link:
+                    - /url: /finance/transactions
+                    - img
+                    - generic: Transações
+                  - link:
+                    - /url: /finance/accounts
+                    - img
+                    - generic: Contas
+                  - link:
+                    - /url: /finance/cards
+                    - img
+                    - generic: Cartões
+                  - link:
+                    - /url: /finance/budget
+                    - img
+                    - generic: Orçamento
+                  - link:
+                    - /url: /finance/goals
+                    - img
+                    - generic: Metas
+                  - link:
+                    - /url: /finance/reports
+                    - img
+                    - generic: Relatórios
+                  - link:
+                    - /url: /finance/categories
+                    - img
+                    - generic: Categorias
+                  - generic: PREÇOS
+                  - button:
+                    - img
+                    - generic: Preços
+                    - img
+                  - generic: PRODUTIVIDADE
+                  - button:
+                    - img
+                    - generic: Tarefas
+                    - img
+                  - link:
+                    - /url: /habits
+                    - img
+                    - generic: Hábitos
+                    - generic: G H
+                  - generic: CONTEÚDO
+                  - link:
+                    - /url: /notes
+                    - img
+                    - generic: Notas
+                    - generic: G N
+                  - link:
+                    - /url: /bookmarks
+                    - img
+                    - generic: Bookmarks
+                    - generic: G B
+                  - generic: SISTEMA
+                  - link:
+                    - /url: /purchases
+                    - img
+                    - generic: Compras
+                    - generic: G C
+                  - link:
+                    - /url: /settings
+                    - img
+                    - generic: Configurações
+          - generic:
+            - button:
+              - img
+              - generic: Aparência
+              - generic: Escuro
+            - generic:
+              - generic:
+                - generic: PD
+              - generic:
+                - paragraph: Playwright Dev
+              - link:
+                - /url: /settings
+                - img
+      - generic:
+        - main:
+          - generic:
+            - generic:
+              - generic:
+                - paragraph: Finanças
+                - heading [level=1]: Metas
+                - paragraph: Seus objetivos financeiros
+              - button:
+                - img
+                - text: Nova meta
+            - generic:
+              - button:
+                - generic:
+                  - generic:
+                    - img
+                  - generic:
+                    - generic:
+                      - paragraph: teste
+                      - paragraph: 23%
+                    - paragraph: R$ 25,89 de R$ 111,11
+                    - generic:
+                      - paragraph: Faltam R$ 85,22
+                      - generic: No ritmo
+    - region "Notifications alt+T":
+      - list
+  - generic:
+    - generic:
+      - img
+    - generic:
+      - img
+  - dialog [ref=f1e184]:
+    - generic [ref=f1e186]:
+      - button [active] [ref=f1e187]:
+        - img [ref=f1e188]
+      - heading "Nova meta" [level=3] [ref=f1e190]
+    - generic [ref=f1e191]:
+      - generic [ref=f1e192]:
+        - paragraph [ref=f1e193]: Nome da meta *
+        - 'textbox "Ex: Viagem para Europa, Reserva de emergência..." [ref=f1e194]'
+      - generic [ref=f1e195]:
+        - paragraph [ref=f1e196]: Valor alvo (R$) *
+        - generic [ref=f1e197]:
+          - generic [ref=f1e198]: R$
+          - textbox "0,00" [ref=f1e199]
+      - generic [ref=f1e200]:
+        - paragraph [ref=f1e201]: Contribuição mensal (R$)
+        - generic [ref=f1e202]:
+          - generic [ref=f1e203]: R$
+          - textbox "0,00" [ref=f1e204]
+      - generic [ref=f1e205]:
+        - paragraph [ref=f1e206]: Prazo (opcional)
+        - button "Selecione uma data (opcional)" [ref=f1e207]:
+          - img [ref=f1e208]
+          - generic [ref=f1e210]: Selecione uma data (opcional)
+      - generic [ref=f1e211]:
+        - paragraph [ref=f1e212]: Conta vinculada (opcional)
+        - generic [ref=f1e213]:
+          - button "Apenas controle visual Sem conta vinculada" [ref=f1e214]:
+            - img [ref=f1e216]
+            - generic [ref=f1e219]:
+              - paragraph [ref=f1e220]: Apenas controle visual
+              - paragraph [ref=f1e221]: Sem conta vinculada
+            - img [ref=f1e222]
+          - button "T teste Conta Corrente R$ 25,89" [ref=f1e224]:
+            - generic [ref=f1e225]: T
+            - generic [ref=f1e226]:
+              - paragraph [ref=f1e227]: teste
+              - paragraph [ref=f1e228]: Conta Corrente
+            - generic [ref=f1e229]: R$ 25,89
+          - button "C Conta Teste Conta Corrente R$ 0,00" [ref=f1e230]:
+            - generic [ref=f1e231]: C
+            - generic [ref=f1e232]:
+              - paragraph [ref=f1e233]: Conta Teste
+              - paragraph [ref=f1e234]: Conta Corrente
+            - generic [ref=f1e235]: R$ 0,00
+        - paragraph [ref=f1e236]: Se vinculada, o progresso reflete o saldo atual da conta
+      - generic [ref=f1e237]:
+        - paragraph [ref=f1e238]: Cor
+        - generic [ref=f1e239]:
+          - button [ref=f1e240]
+          - button [ref=f1e241]
+          - button [ref=f1e242]
+          - button [ref=f1e243]
+          - button [ref=f1e244]
+          - button [ref=f1e245]
+          - button [ref=f1e246]
+          - button [ref=f1e247]
+          - button [ref=f1e248]
+          - button [ref=f1e249]
+          - button [ref=f1e250]
+          - button [ref=f1e251]
+          - button [ref=f1e252]
+          - button [ref=f1e253]
+          - button [ref=f1e254]
+    - generic [ref=f1e255]:
+      - button "Cancelar" [ref=f1e256]
+      - button "Criar meta" [disabled] [ref=f1e257]

@@ -43,6 +43,7 @@ final class CreateTransactionAction
                 'account_id' => $dto->accountId,
                 'destination_account_id' => $dto->destinationAccountId,
                 'card_id' => $dto->cardId,
+                'statement_month' => $dto->statementMonth,
                 'category_id' => $dto->categoryId,
                 'goal_id' => $dto->goalId,
                 'type' => $dto->type,

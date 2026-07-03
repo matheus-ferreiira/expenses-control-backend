@@ -24,6 +24,8 @@ final readonly class TransactionDTO
         public ?string $destinationAccountId = null,
         /** Finance goal this transaction contributes to (aporte). */
         public ?string $goalId = null,
+        /** Credit card statement being settled ("YYYY-MM"), for statement-payment transfers. */
+        public ?string $statementMonth = null,
     ) {}
 
     public static function fromArray(array $data): self
@@ -43,6 +45,7 @@ final readonly class TransactionDTO
             tagIds: $data['tag_ids'] ?? null,
             destinationAccountId: $data['destination_account_id'] ?? null,
             goalId: $data['goal_id'] ?? null,
+            statementMonth: $data['statement_month'] ?? null,
         );
     }
 }

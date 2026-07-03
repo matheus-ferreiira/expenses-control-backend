@@ -2,12 +2,17 @@
 
 namespace App\Domains\Finance\Controllers;
 
+use App\Domains\Finance\Actions\PayCardStatementAction;
+use App\Domains\Finance\Enums\TransactionType;
 use App\Domains\Finance\Models\BankAccount;
 use App\Domains\Finance\Models\CreditCard;
-use App\Domains\Finance\Requests\StoreCreditCardRequest;
+use App\Domains\Finance\Models\Transaction;
+use App\Domains\Finance\Requests\PayCardStatementRequest;
 use App\Domains\Finance\Requests\StandaloneStoreCreditCardRequest;
+use App\Domains\Finance\Requests\StoreCreditCardRequest;
 use App\Domains\Finance\Requests\UpdateCreditCardRequest;
 use App\Domains\Finance\Resources\CreditCardResource;
+use App\Domains\Finance\Resources\TransactionResource;
 use App\Domains\Finance\Services\BankAccountService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
@@ -17,6 +22,7 @@ class CreditCardController extends Controller
 {
     public function __construct(
         private readonly BankAccountService $service,
+        private readonly PayCardStatementAction $payStatement,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -67,5 +73,39 @@ class CreditCardController extends Controller
         $this->service->deleteCreditCard($creditCard);
 
         return $this->noContent();
+    }
+
+    /** Settle a statement: transfer from a bank account to this card. */
+    public function payStatement(PayCardStatementRequest $request, CreditCard $creditCard): JsonResponse
+    {
+        $this->authorize('update', $creditCard);
+        $validated = $request->validated();
+
+        $transaction = $this->payStatement->execute(
+            $request->user(),
+            $creditCard,
+            $validated['account_id'],
+            (float) $validated['amount'],
+            $validated['statement_month'],
+            $validated['payment_date'] ?? null,
+        );
+
+        return $this->created(new TransactionResource($transaction), 'Statement paid');
+    }
+
+    /** Payment (if any) that settled the given statement month of this card. */
+    public function statementPayment(Request $request, CreditCard $creditCard): JsonResponse
+    {
+        $this->authorize('view', $creditCard);
+        $request->validate(['statement_month' => ['required', 'date_format:Y-m']]);
+
+        $payment = Transaction::query()
+            ->where('card_id', $creditCard->id)
+            ->where('statement_month', $request->query('statement_month'))
+            ->where('type', TransactionType::Transfer->value)
+            ->with('account')
+            ->first();
+
+        return $this->success($payment ? new TransactionResource($payment) : null);
     }
 }

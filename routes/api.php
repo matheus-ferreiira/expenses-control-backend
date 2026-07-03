@@ -124,6 +124,8 @@ Route::prefix('v1')->group(function () {
             Route::get('cards', [CreditCardController::class, 'index']);
             Route::post('cards', [CreditCardController::class, 'storeStandalone']);
             Route::get('cards/{creditCard}', [CreditCardController::class, 'show']);
+            Route::post('cards/{creditCard}/pay-statement', [CreditCardController::class, 'payStatement']);
+            Route::get('cards/{creditCard}/statement-payment', [CreditCardController::class, 'statementPayment']);
             Route::put('cards/{creditCard}', [CreditCardController::class, 'update']);
             Route::patch('cards/{creditCard}', [CreditCardController::class, 'update']);
             Route::delete('cards/{creditCard}', [CreditCardController::class, 'destroy']);

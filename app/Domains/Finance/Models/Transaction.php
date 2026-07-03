@@ -24,6 +24,7 @@ class Transaction extends Model
         'account_id',
         'destination_account_id',
         'card_id',
+        'statement_month',
         'category_id',
         'goal_id',
         'type',

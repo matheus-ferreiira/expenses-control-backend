@@ -1,0 +1,6 @@
+- generic [active]:
+  - generic:
+    - region "Notifications alt+T":
+      - list
+  - generic "Toggle devtools panel" [ref=f3e2] [cursor=pointer]:
+    - img [ref=f3e3]

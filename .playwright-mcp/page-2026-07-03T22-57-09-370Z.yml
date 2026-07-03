@@ -1,0 +1,160 @@
+- generic [ref=f1e13]:
+  - generic [ref=f1e14]:
+    - generic [ref=f1e15]:
+      - complementary [ref=f1e17]:
+        - generic [ref=f1e18]:
+          - generic [ref=f1e19]:
+            - generic [ref=f1e20]: Vault
+            - generic [ref=f1e21]: Beta
+          - button [ref=f1e22]:
+            - img [ref=f1e23]
+        - generic [ref=f1e26]:
+          - button [ref=f1e268]:
+            - img [ref=f1e28]
+            - generic [ref=f1e31]: Buscar...
+            - generic [ref=f1e32]: Ctrl K
+          - button [ref=f1e269]:
+            - img [ref=f1e34]
+            - generic [ref=f1e35]: Quick add
+            - generic [ref=f1e36]: "N"
+        - navigation [ref=f1e40]:
+          - link [ref=f1e270] [cursor=pointer]:
+            - /url: /dashboard
+            - img [ref=f1e42]
+            - generic [ref=f1e47]: Dashboard
+            - generic [ref=f1e48]: G D
+          - generic [ref=f1e49]: FINANÇAS
+          - button [ref=f1e271]:
+            - img [ref=f1e51]
+            - generic [ref=f1e54]: Finanças
+            - img [ref=f1e55]
+          - link [ref=f1e272] [cursor=pointer]:
+            - /url: /finance
+            - img [ref=f1e58]
+            - generic [ref=f1e63]: Visão Geral
+          - link [ref=f1e273] [cursor=pointer]:
+            - /url: /finance/transactions
+            - img [ref=f1e65]
+            - generic [ref=f1e68]: Transações
+          - link [ref=f1e274] [cursor=pointer]:
+            - /url: /finance/accounts
+            - img [ref=f1e70]
+            - generic [ref=f1e72]: Contas
+          - link [ref=f1e275] [cursor=pointer]:
+            - /url: /finance/cards
+            - img [ref=f1e74]
+            - generic [ref=f1e76]: Cartões
+          - link [ref=f1e276] [cursor=pointer]:
+            - /url: /finance/budget
+            - img [ref=f1e78]
+            - generic [ref=f1e81]: Orçamento
+          - link [ref=f1e277] [cursor=pointer]:
+            - /url: /finance/goals
+            - img [ref=f1e83]
+            - generic [ref=f1e85]: Metas
+          - link [ref=f1e278] [cursor=pointer]:
+            - /url: /finance/reports
+            - img [ref=f1e87]
+            - generic [ref=f1e90]: Relatórios
+          - link [ref=f1e279] [cursor=pointer]:
+            - /url: /finance/categories
+            - img [ref=f1e92]
+            - generic [ref=f1e95]: Categorias
+          - generic [ref=f1e96]: PREÇOS
+          - button [ref=f1e280]:
+            - img [ref=f1e98]
+            - generic [ref=f1e101]: Preços
+            - img [ref=f1e102]
+          - generic [ref=f1e104]: PRODUTIVIDADE
+          - button [ref=f1e281]:
+            - img [ref=f1e106]
+            - generic [ref=f1e109]: Tarefas
+            - img [ref=f1e110]
+          - link [ref=f1e282] [cursor=pointer]:
+            - /url: /habits
+            - img [ref=f1e113]
+            - generic [ref=f1e115]: Hábitos
+            - generic [ref=f1e116]: G H
+          - generic [ref=f1e117]: CONTEÚDO
+          - link [ref=f1e283] [cursor=pointer]:
+            - /url: /notes
+            - img [ref=f1e119]
+            - generic [ref=f1e122]: Notas
+            - generic [ref=f1e123]: G N
+          - link [ref=f1e284] [cursor=pointer]:
+            - /url: /bookmarks
+            - img [ref=f1e125]
+            - generic [ref=f1e127]: Bookmarks
+            - generic [ref=f1e128]: G B
+          - generic [ref=f1e129]: SISTEMA
+          - link [ref=f1e285] [cursor=pointer]:
+            - /url: /purchases
+            - img [ref=f1e131]
+            - generic [ref=f1e135]: Compras
+            - generic [ref=f1e136]: G C
+          - link [ref=f1e286] [cursor=pointer]:
+            - /url: /settings
+            - img [ref=f1e138]
+            - generic [ref=f1e141]: Configurações
+        - generic [ref=f1e142]:
+          - button [ref=f1e287]:
+            - img [ref=f1e144]
+            - generic [ref=f1e146]: Aparência
+            - generic [ref=f1e147]: Escuro
+          - generic [ref=f1e148]:
+            - generic [ref=f1e150]: PD
+            - paragraph [ref=f1e152]: Playwright Dev
+            - link [ref=f1e153] [cursor=pointer]:
+              - /url: /settings
+              - img [ref=f1e154]
+      - main [ref=f1e158]:
+        - generic [ref=f1e159]:
+          - generic [ref=f1e160]:
+            - generic [ref=f1e161]:
+              - paragraph [ref=f1e162]: Finanças
+              - heading [level=1] [ref=f1e288]: Metas
+              - paragraph [ref=f1e164]: Seus objetivos financeiros
+            - button [ref=f1e289]:
+              - img [ref=f1e166]
+              - text: Nova meta
+          - generic [ref=f1e167]:
+            - button [ref=f1e290]:
+              - generic [ref=f1e291]:
+                - img [ref=f1e293]
+                - generic [ref=f1e295]:
+                  - generic [ref=f1e296]:
+                    - paragraph [ref=f1e297]: Reserva 10k
+                    - paragraph [ref=f1e298]: 0%
+                  - paragraph [ref=f1e299]: R$ 0,00 de R$ 10.000,00
+                  - generic [ref=f1e301]:
+                    - paragraph [ref=f1e302]: Faltam R$ 10.000,00
+                    - generic [ref=f1e303]: No ritmo
+            - button [ref=f1e304]:
+              - generic [ref=f1e169]:
+                - img [ref=f1e171]
+                - generic [ref=f1e173]:
+                  - generic [ref=f1e174]:
+                    - paragraph [ref=f1e175]: teste
+                    - paragraph [ref=f1e176]: 23%
+                  - paragraph [ref=f1e177]: R$ 25,89 de R$ 111,11
+                  - generic [ref=f1e180]:
+                    - paragraph [ref=f1e181]: Faltam R$ 85,22
+                    - generic [ref=f1e182]: No ritmo
+    - region "Notifications alt+T" [ref=f1e307]:
+      - list [ref=f1e308]:
+        - listitem [ref=f1e309]:
+          - img [ref=f1e311]
+          - generic [ref=f1e315]: Aporte mensal criado — 10 meses até a meta
+  - generic [ref=f1e1]:
+    - img [ref=f1e3] [cursor=pointer]
+    - img [ref=f1e9] [cursor=pointer]
+  - alertdialog "Criar transação fixa?" [ref=f1e260]:
+    - generic [ref=f1e261]:
+      - heading "Criar transação fixa?" [level=2] [ref=f1e262]
+      - paragraph [ref=f1e263]:
+        - text: Deseja criar uma transação fixa de
+        - strong [ref=f1e264]: /mês
+        - text: vinculada a esta meta?
+    - generic [ref=f1e265]:
+      - button "Não, só a meta" [ref=f1e266]
+      - button "Sim, criar transação" [active] [ref=f1e267]

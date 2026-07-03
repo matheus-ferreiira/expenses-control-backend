@@ -14,6 +14,7 @@ class TransactionResource extends JsonResource
             'account_id' => $this->account_id,
             'destination_account_id' => $this->destination_account_id,
             'card_id' => $this->card_id,
+            'statement_month' => $this->statement_month,
             'category_id' => $this->category_id,
             'goal_id' => $this->goal_id,
             'type' => $this->type?->value,
