@@ -22,6 +22,8 @@ final readonly class TransactionDTO
         public ?array $tagIds = null,
         /** Destination account for type=transfer — the account being credited. */
         public ?string $destinationAccountId = null,
+        /** Finance goal this transaction contributes to (aporte). */
+        public ?string $goalId = null,
     ) {}
 
     public static function fromArray(array $data): self
@@ -40,6 +42,7 @@ final readonly class TransactionDTO
             totalInstallments: $data['total_installments'] ?? null,
             tagIds: $data['tag_ids'] ?? null,
             destinationAccountId: $data['destination_account_id'] ?? null,
+            goalId: $data['goal_id'] ?? null,
         );
     }
 }

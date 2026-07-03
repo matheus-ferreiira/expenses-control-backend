@@ -15,6 +15,7 @@ class TransactionResource extends JsonResource
             'destination_account_id' => $this->destination_account_id,
             'card_id' => $this->card_id,
             'category_id' => $this->category_id,
+            'goal_id' => $this->goal_id,
             'type' => $this->type?->value,
             'amount' => (float) $this->amount,
             'description' => $this->description,
@@ -32,6 +33,12 @@ class TransactionResource extends JsonResource
             'card' => new CreditCardResource($this->whenLoaded('card')),
             'category' => new TransactionCategoryResource($this->whenLoaded('category')),
             'tags' => TransactionTagResource::collection($this->whenLoaded('tags')),
+            'goal' => $this->whenLoaded('goal', fn () => [
+                'id' => $this->goal->id,
+                'name' => $this->goal->name,
+                'color' => $this->goal->color,
+                'icon' => $this->goal->icon,
+            ]),
             'created_at' => $this->created_at->toISOString(),
             'updated_at' => $this->updated_at->toISOString(),
         ];

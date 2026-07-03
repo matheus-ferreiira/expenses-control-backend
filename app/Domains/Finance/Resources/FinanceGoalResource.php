@@ -16,13 +16,14 @@ class FinanceGoalResource extends JsonResource
         $targetAmount = (float) $goal->target_amount;
         $monthlyContribution = (float) $goal->monthly_contribution;
 
-        // Current amount: bank account balance if linked, else sum of confirmed transactions
+        // Current amount: bank account balance if linked, else sum of confirmed
+        // transactions of ANY type linked via goal_id — an aporte is usually an
+        // expense/transfer leaving the checking account, not an income.
         if ($goal->bank_account_id && $goal->bankAccount) {
             $currentAmount = (float) $goal->bankAccount->balance;
         } else {
             $currentAmount = (float) $goal->transactions()
                 ->where('status', 'confirmed')
-                ->where('type', 'income')
                 ->sum('amount');
         }
 
