@@ -19,13 +19,18 @@ final class FinanceReportService
         $confirmed = $transactions->where('status', TransactionStatus::Confirmed);
         $pending = $transactions->where('status', TransactionStatus::Pending);
 
+        // Goal contributions (aportes) are SAVINGS, not spending — kept out of
+        // "expenses" so the report never punishes the user for saving money.
         $income = $confirmed->where('type', TransactionType::Income)->sum('amount');
-        $expenses = $confirmed->where('type', TransactionType::Expense)->sum('amount');
+        $expenses = $confirmed->where('type', TransactionType::Expense)->whereNull('goal_id')->sum('amount');
+        $saved = $confirmed->where('type', TransactionType::Expense)->whereNotNull('goal_id')->sum('amount');
         $pendingIncome = $pending->where('type', TransactionType::Income)->sum('amount');
-        $pendingExpenses = $pending->where('type', TransactionType::Expense)->sum('amount');
+        $pendingExpenses = $pending->where('type', TransactionType::Expense)->whereNull('goal_id')->sum('amount');
+        $pendingSaved = $pending->where('type', TransactionType::Expense)->whereNotNull('goal_id')->sum('amount');
 
         $expensesByCategory = $confirmed
             ->where('type', TransactionType::Expense)
+            ->whereNull('goal_id')
             ->groupBy('category_id')
             ->map(function ($group) {
                 $first = $group->first();
@@ -53,9 +58,11 @@ final class FinanceReportService
             'month' => $month,
             'income' => (float) $income,
             'expenses' => (float) $expenses,
-            'balance' => (float) ($income - $expenses),
+            'saved' => (float) $saved,
+            'balance' => (float) ($income - $expenses - $saved),
             'pending_income' => (float) $pendingIncome,
             'pending_expenses' => (float) $pendingExpenses,
+            'pending_saved' => (float) $pendingSaved,
             'transactions_count' => $transactions->count(),
             'expenses_by_category' => $expensesByCategory,
         ];
@@ -73,14 +80,16 @@ final class FinanceReportService
             $confirmedData = $data->where('status', TransactionStatus::Confirmed);
             $pendingData = $data->where('status', TransactionStatus::Pending);
             $income = (float) $confirmedData->where('type', TransactionType::Income)->sum('amount');
-            $expenses = (float) $confirmedData->where('type', TransactionType::Expense)->sum('amount');
+            $expenses = (float) $confirmedData->where('type', TransactionType::Expense)->whereNull('goal_id')->sum('amount');
+            $saved = (float) $confirmedData->where('type', TransactionType::Expense)->whereNotNull('goal_id')->sum('amount');
             $months[$m] = [
                 'month' => $m,
                 'income' => $income,
                 'expenses' => $expenses,
-                'balance' => $income - $expenses,
+                'saved' => $saved,
+                'balance' => $income - $expenses - $saved,
                 'pending_income' => (float) $pendingData->where('type', TransactionType::Income)->sum('amount'),
-                'pending_expenses' => (float) $pendingData->where('type', TransactionType::Expense)->sum('amount'),
+                'pending_expenses' => (float) $pendingData->where('type', TransactionType::Expense)->whereNull('goal_id')->sum('amount'),
             ];
         }
 
