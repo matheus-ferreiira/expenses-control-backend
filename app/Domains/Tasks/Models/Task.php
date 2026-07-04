@@ -115,12 +115,9 @@ class Task extends Model
 
     public function scopeOverdue(Builder $query): Builder
     {
-        // Sem horário definido, a tarefa só atrasa quando o DIA passa —
-        // não à meia-noite do próprio dia de vencimento.
+        // Atrasada = o DIA passou. Tarefa de hoje (com ou sem horário) ainda é
+        // "de hoje" — só vira atrasada amanhã. Consistente com a UI do módulo.
         return $query->where('status', '!=', TaskStatus::Completed->value)
-            ->where(function (Builder $q) {
-                $q->where(fn (Builder $qq) => $qq->where('has_due_time', true)->where('due_date', '<', now()))
-                    ->orWhere(fn (Builder $qq) => $qq->where('has_due_time', false)->whereDate('due_date', '<', today()));
-            });
+            ->whereDate('due_date', '<', today());
     }
 }
