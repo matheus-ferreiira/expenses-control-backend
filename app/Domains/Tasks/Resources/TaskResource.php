@@ -19,9 +19,7 @@ class TaskResource extends JsonResource
             'priority' => $this->priority?->value,
             'status' => $this->status?->value,
             'due_date' => $dueDate?->toDateString(),
-            'due_time' => $dueDate && $dueDate->format('H:i:s') !== '00:00:00'
-                ? $dueDate->format('H:i')
-                : null,
+            'due_time' => $dueDate && $this->has_due_time ? $dueDate->format('H:i') : null,
             'completed_at' => $this->completed_at?->toISOString(),
             'recurrence_type' => $this->recurrence_type?->value ?? 'none',
             'recurrence_config' => $this->recurrence_config,

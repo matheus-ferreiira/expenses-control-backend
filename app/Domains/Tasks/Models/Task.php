@@ -29,6 +29,7 @@ class Task extends Model
         'priority',
         'status',
         'due_date',
+        'has_due_time',
         'completed_at',
         'recurrence_type',
         'recurrence_config',
@@ -44,6 +45,7 @@ class Task extends Model
         'recurrence_type' => RecurrenceType::class,
         'recurrence_config' => 'array',
         'due_date' => 'datetime',
+        'has_due_time' => 'boolean',
         'completed_at' => 'datetime',
         'next_occurrence_date' => 'datetime',
         'is_archived' => 'boolean',
@@ -113,6 +115,12 @@ class Task extends Model
 
     public function scopeOverdue(Builder $query): Builder
     {
-        return $query->where('due_date', '<', now())->where('status', '!=', TaskStatus::Completed->value);
+        // Sem horário definido, a tarefa só atrasa quando o DIA passa —
+        // não à meia-noite do próprio dia de vencimento.
+        return $query->where('status', '!=', TaskStatus::Completed->value)
+            ->where(function (Builder $q) {
+                $q->where(fn (Builder $qq) => $qq->where('has_due_time', true)->where('due_date', '<', now()))
+                    ->orWhere(fn (Builder $qq) => $qq->where('has_due_time', false)->whereDate('due_date', '<', today()));
+            });
     }
 }

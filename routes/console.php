@@ -11,3 +11,6 @@ Artisan::command('inspire', function () {
 // Janela rolante de recorrências — também disparada lazy no TransactionService (1x/dia por usuário),
 // então este agendamento é redundância barata para quando houver cron configurado.
 Schedule::command('finance:extend-recurrences --prune')->dailyAt('03:00');
+
+// Rotinas de tarefas — idem: lazy no TaskService::list + redundância agendada.
+Schedule::command('tasks:roll-recurrences')->dailyAt('03:10');

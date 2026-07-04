@@ -8,6 +8,7 @@ use App\Domains\Tasks\Actions\CreateTaskAction;
 use App\Domains\Tasks\Actions\CreateTaskListAction;
 use App\Domains\Tasks\Actions\CreateTaskTagAction;
 use App\Domains\Tasks\Actions\ReorderTasksAction;
+use App\Domains\Tasks\Actions\RollRecurringTaskOccurrencesAction;
 use App\Domains\Tasks\Actions\UpdateTaskAction;
 use App\Domains\Tasks\Actions\UpdateTaskListAction;
 use App\Domains\Tasks\Actions\UpdateTaskTagAction;
@@ -22,6 +23,7 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Cache;
 
 final class TaskService
 {
@@ -35,10 +37,13 @@ final class TaskService
         private readonly UpdateTaskListAction $updateTaskList,
         private readonly CreateTaskTagAction $createTaskTag,
         private readonly UpdateTaskTagAction $updateTaskTag,
+        private readonly RollRecurringTaskOccurrencesAction $rollRecurrences,
     ) {}
 
     public function list(User $user, array $filters = []): LengthAwarePaginator
     {
+        $this->keepRecurrencesRolling($user);
+
         $showArchived = isset($filters['archived']) && $filters['archived'];
 
         $query = Task::forUser($user->id)
@@ -73,11 +78,11 @@ final class TaskService
         if (! empty($filters['period'])) {
             $today = Carbon::today();
             match ($filters['period']) {
-                'today'    => $query->whereDate('due_date', $today),
+                'today' => $query->whereDate('due_date', $today),
                 'upcoming' => $query->where('due_date', '>', $today)->whereDate('due_date', '>', $today),
-                'overdue'  => $query->where('due_date', '<', $today)->where('status', '!=', 'completed'),
-                'no_date'  => $query->whereNull('due_date'),
-                default    => null,
+                'overdue' => $query->overdue(),
+                'no_date' => $query->whereNull('due_date'),
+                default => null,
             };
         }
 
@@ -97,6 +102,19 @@ final class TaskService
         $query->orderBy($sortBy, $sortDir);
 
         return $query->paginate($filters['per_page'] ?? 15);
+    }
+
+    /**
+     * Garante as ocorrências recorrentes de hoje no primeiro acesso do dia
+     * (fallback do scheduler — Cache::add é atômico, roda 1x por usuário/dia).
+     */
+    private function keepRecurrencesRolling(User $user): void
+    {
+        $key = "tasks:recurrences-rolled:{$user->id}:".today()->toDateString();
+
+        if (Cache::add($key, true, now()->addDay())) {
+            $this->rollRecurrences->executeForUser($user->id);
+        }
     }
 
     public function create(User $user, TaskDTO $dto): Task

@@ -4,6 +4,7 @@ namespace App\Domains\Tasks\Actions;
 
 use App\Domains\Tasks\DTOs\TaskDTO;
 use App\Domains\Tasks\Models\Task;
+use Carbon\Carbon;
 
 final class UpdateTaskAction
 {
@@ -19,9 +20,12 @@ final class UpdateTaskAction
             'description' => $has('description') ? $dto->description : $task->description,
             'due_date' => $has('due_date')
                 ? ($dto->dueDate
-                    ? \Carbon\Carbon::parse($dto->dueDate . ($dto->dueTime ? ' ' . $dto->dueTime : ''))
+                    ? Carbon::parse($dto->dueDate.($dto->dueTime ? ' '.$dto->dueTime : ''))
                     : null)
                 : $task->due_date,
+            'has_due_time' => $has('due_date')
+                ? ($dto->dueDate !== null && $dto->dueTime !== null)
+                : $task->has_due_time,
             'recurrence_config' => $has('recurrence_config') ? $dto->recurrenceConfig : $task->recurrence_config,
             'task_list_id' => $has('task_list_id') ? $dto->taskListId : $task->task_list_id,
             'estimated_minutes' => $has('estimated_minutes') ? $dto->estimatedMinutes : $task->estimated_minutes,

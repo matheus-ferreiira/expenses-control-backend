@@ -8,6 +8,7 @@ use App\Domains\Tasks\Enums\TaskPriority;
 use App\Domains\Tasks\Enums\TaskStatus;
 use App\Domains\Tasks\Models\Task;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 final class CreateTaskAction
@@ -26,8 +27,9 @@ final class CreateTaskAction
                 'priority' => $dto->priority ?? TaskPriority::Normal,
                 'status' => $dto->status ?? TaskStatus::Pending,
                 'due_date' => $dto->dueDate
-                    ? \Carbon\Carbon::parse($dto->dueDate . ($dto->dueTime ? ' ' . $dto->dueTime : ''))
+                    ? Carbon::parse($dto->dueDate.($dto->dueTime ? ' '.$dto->dueTime : ''))
                     : null,
+                'has_due_time' => $dto->dueDate !== null && $dto->dueTime !== null,
                 'recurrence_type' => $dto->recurrenceType ?? RecurrenceType::None,
                 'recurrence_config' => $dto->recurrenceConfig,
                 'position' => $position,

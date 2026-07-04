@@ -19,15 +19,18 @@ final class RecurrenceService
 {
     public function calculateNextDate(RecurrenceType $type, array $config, Carbon $from): Carbon
     {
-        return match ($type) {
-            RecurrenceType::Daily    => $this->nextDaily($from, $config),
-            RecurrenceType::Weekly   => $this->nextWeekly($from, $config),
-            RecurrenceType::Monthly  => $this->nextMonthly($from, $config),
-            RecurrenceType::Yearly   => $this->nextYearly($from, $config),
+        $next = match ($type) {
+            RecurrenceType::Daily => $this->nextDaily($from, $config),
+            RecurrenceType::Weekly => $this->nextWeekly($from, $config),
+            RecurrenceType::Monthly => $this->nextMonthly($from, $config),
+            RecurrenceType::Yearly => $this->nextYearly($from, $config),
             RecurrenceType::Weekdays => $this->nextWeekday($from),
-            RecurrenceType::Custom   => $this->nextCustom($from, $config),
-            RecurrenceType::None     => throw new InvalidArgumentException('Non-recurring task has no next date'),
+            RecurrenceType::Custom => $this->nextCustom($from, $config),
+            RecurrenceType::None => throw new InvalidArgumentException('Non-recurring task has no next date'),
         };
+
+        // O horário do dia faz parte da rotina ("acordar 08h" repete às 08h)
+        return $next->setTime($from->hour, $from->minute, (int) $from->second);
     }
 
     private function nextDaily(Carbon $from, array $config): Carbon
@@ -101,10 +104,10 @@ final class RecurrenceService
             : 'days';
 
         return match ($unit) {
-            'days'   => $from->copy()->addDays($interval)->startOfDay(),
-            'weeks'  => $from->copy()->addWeeks($interval)->startOfDay(),
+            'days' => $from->copy()->addDays($interval)->startOfDay(),
+            'weeks' => $from->copy()->addWeeks($interval)->startOfDay(),
             'months' => $from->copy()->addMonths($interval)->startOfDay(),
-            'years'  => $from->copy()->addYears($interval)->startOfDay(),
+            'years' => $from->copy()->addYears($interval)->startOfDay(),
         };
     }
 }
