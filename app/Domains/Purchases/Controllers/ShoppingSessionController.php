@@ -26,6 +26,16 @@ class ShoppingSessionController extends Controller
 
     public function store(StoreShoppingSessionRequest $request): JsonResponse
     {
+        // Toda a UI assume no máximo UMA lista ativa — duas ativas quebram
+        // o card da página e o sheet (podem mostrar listas diferentes).
+        $hasActive = ShoppingSession::forUser($request->user()->id)
+            ->where('status', 'active')
+            ->exists();
+
+        if ($hasActive) {
+            return $this->error('Já existe uma lista ativa. Finalize ou exclua a atual antes de criar outra.', 422);
+        }
+
         $session = ShoppingSession::create([
             'user_id' => $request->user()->id,
             'title' => $request->title,
@@ -92,9 +102,9 @@ class ShoppingSessionController extends Controller
         }
 
         $session->update([
-            'status'         => 'active',
-            'finished_at'    => null,
-            'total'          => null,
+            'status' => 'active',
+            'finished_at' => null,
+            'total' => null,
             'transaction_id' => null,
         ]);
 

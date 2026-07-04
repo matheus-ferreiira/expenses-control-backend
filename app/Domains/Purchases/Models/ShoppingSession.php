@@ -20,6 +20,17 @@ class ShoppingSession extends Model
         return ShoppingSessionFactory::new();
     }
 
+    protected static function booted(): void
+    {
+        // O cascadeOnDelete do banco só age em hard delete — sem este hook,
+        // soft-deletar a sessão deixa os itens órfãos (aconteceu em prod).
+        static::deleting(function (ShoppingSession $session) {
+            if (! $session->isForceDeleting()) {
+                $session->items()->delete();
+            }
+        });
+    }
+
     protected $fillable = [
         'user_id',
         'title',
