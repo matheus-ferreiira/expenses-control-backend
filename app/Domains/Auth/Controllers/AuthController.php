@@ -75,6 +75,32 @@ class AuthController extends Controller
         return $this->success(new AuthUserResource($request->user()));
     }
 
+    /** Update profile fields (name). Email is the login identity — not editable here. */
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'min:2', 'max:120'],
+        ]);
+
+        $user = $request->user();
+        $user->update(['name' => $validated['name']]);
+
+        return $this->success(new AuthUserResource($user->fresh()), 'Profile updated');
+    }
+
+    /** Change password — requires the current one; keeps the current session valid. */
+    public function updatePassword(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $request->user()->update(['password' => bcrypt($validated['password'])]);
+
+        return $this->success(message: 'Password updated');
+    }
+
     public function updateSettings(Request $request): JsonResponse
     {
         $validated = $request->validate([

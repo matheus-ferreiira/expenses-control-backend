@@ -59,6 +59,8 @@ Route::prefix('v1')->group(function () {
             Route::post('logout', [AuthController::class, 'logout']);
             Route::post('logout-all', [AuthController::class, 'logoutAll']);
             Route::get('me', [AuthController::class, 'me']);
+            Route::patch('profile', [AuthController::class, 'updateProfile']);
+            Route::patch('password', [AuthController::class, 'updatePassword']);
             Route::patch('settings', [AuthController::class, 'updateSettings']);
             Route::delete('reset-data', [AuthController::class, 'resetData']);
         });
