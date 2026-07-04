@@ -267,6 +267,7 @@ Route::prefix('v1')->group(function () {
             Route::put('sessions/{session}', [ShoppingSessionController::class, 'update']);
             Route::patch('sessions/{session}/reopen', [ShoppingSessionController::class, 'reopen']);
             Route::delete('sessions/{session}', [ShoppingSessionController::class, 'destroy']);
+            Route::get('items/frequent', [ShoppingItemController::class, 'frequent']);
             Route::post('sessions/{session}/items', [ShoppingItemController::class, 'store']);
             Route::put('items/{item}', [ShoppingItemController::class, 'update']);
             Route::delete('items/{item}', [ShoppingItemController::class, 'destroy']);

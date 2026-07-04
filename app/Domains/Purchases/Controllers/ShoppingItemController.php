@@ -10,9 +10,31 @@ use App\Domains\Purchases\Resources\ShoppingItemResource;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ShoppingItemController extends Controller
 {
+    /**
+     * Itens mais frequentes do histórico do usuário — combustível do
+     * autocomplete e dos chips de 1 toque. Inclui itens de listas antigas
+     * (soft-deleted): o nome ainda é sinal de recorrência. A collation *_ci
+     * do MySQL agrupa "Fósforo"/"fosforo" como o mesmo item.
+     */
+    public function frequent(Request $request): JsonResponse
+    {
+        $frequent = ShoppingItem::withTrashed()
+            ->where('user_id', $request->user()->id)
+            ->select('name', DB::raw('COUNT(*) as uses'), DB::raw('MAX(created_at) as last_used'))
+            ->groupBy('name')
+            ->orderByDesc('uses')
+            ->orderByDesc('last_used')
+            ->limit(20)
+            ->get()
+            ->map(fn ($row) => ['name' => $row->name, 'uses' => (int) $row->uses]);
+
+        return $this->success($frequent);
+    }
+
     public function store(StoreShoppingItemRequest $request, ShoppingSession $session): JsonResponse
     {
         $this->authorize('update', $session);
