@@ -9,9 +9,6 @@ use App\Domains\Finance\Enums\TransactionType;
 use App\Domains\Finance\Models\BankAccount;
 use App\Domains\Finance\Models\CreditCard;
 use App\Domains\Finance\Models\Transaction;
-use App\Domains\Goals\Enums\GoalStatus;
-use App\Domains\Goals\Enums\GoalType;
-use App\Domains\Goals\Models\Goal;
 use App\Domains\Habits\Enums\FrequencyType;
 use App\Domains\Habits\Models\Habit;
 use App\Domains\Habits\Models\HabitLog;
@@ -41,7 +38,6 @@ class DemoDataSeeder extends Seeder
         $this->seedHabits($user);
         $this->seedTasks($user);
         $this->seedFinance($user);
-        $this->seedGoals($user);
         $this->seedCalendar($user);
         $this->seedNotes($user);
     }
@@ -271,77 +267,6 @@ class DemoDataSeeder extends Seeder
                     'transaction_date' => $monthStart->copy()->addDays(9)->toDateString(),
                 ]);
             }
-        }
-    }
-
-    // ── Metas ─────────────────────────────────────────────────────────────────
-
-    private function seedGoals(User $user): void
-    {
-        if (Goal::where('user_id', $user->id)->count() >= 3) {
-            return;
-        }
-
-        $goals = [
-            [
-                'title' => 'Reserva de emergência',
-                'type' => GoalType::Financial,
-                'status' => GoalStatus::Active,
-                'target_amount' => 30000.00,
-                'current_amount' => 8300.00,
-                'target_date' => now()->addMonths(18)->toDateString(),
-                'description' => '6 meses de gastos mensais',
-            ],
-            [
-                'title' => 'Viagem para a Europa',
-                'type' => GoalType::Personal,
-                'status' => GoalStatus::Active,
-                'target_amount' => 15000.00,
-                'current_amount' => 3200.00,
-                'target_date' => now()->addMonths(12)->toDateString(),
-                'description' => 'Portugal, Espanha e França',
-            ],
-            [
-                'title' => 'Carro novo',
-                'type' => GoalType::Financial,
-                'status' => GoalStatus::Active,
-                'target_amount' => 60000.00,
-                'current_amount' => 14500.00,
-                'target_date' => now()->addMonths(36)->toDateString(),
-                'description' => null,
-            ],
-            [
-                'title' => 'Curso de inglês avançado',
-                'type' => GoalType::Learning,
-                'status' => GoalStatus::Completed,
-                'target_amount' => 2400.00,
-                'current_amount' => 2400.00,
-                'target_date' => now()->subMonths(1)->toDateString(),
-                'description' => 'Nivel C1',
-            ],
-            [
-                'title' => 'Perder 8kg',
-                'type' => GoalType::Health,
-                'status' => GoalStatus::Active,
-                'target_amount' => 8.00,
-                'current_amount' => 3.50,
-                'target_date' => now()->addMonths(4)->toDateString(),
-                'description' => 'Meta de saúde para 2026',
-            ],
-        ];
-
-        foreach ($goals as $data) {
-            Goal::create([
-                'user_id' => $user->id,
-                'title' => $data['title'],
-                'type' => $data['type'],
-                'status' => $data['status'],
-                'target_amount' => $data['target_amount'],
-                'current_amount' => $data['current_amount'],
-                'target_date' => $data['target_date'],
-                'description' => $data['description'],
-                'completed_at' => $data['status'] === GoalStatus::Completed ? now()->subMonth() : null,
-            ]);
         }
     }
 

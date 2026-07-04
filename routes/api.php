@@ -12,7 +12,6 @@ use App\Domains\Finance\Controllers\FinanceReportController;
 use App\Domains\Finance\Controllers\TransactionCategoryController;
 use App\Domains\Finance\Controllers\TransactionController;
 use App\Domains\Finance\Controllers\TransactionTagController;
-use App\Domains\Goals\Controllers\GoalController;
 use App\Domains\Habits\Controllers\HabitController;
 use App\Domains\Notes\Controllers\NoteController;
 use App\Domains\Notes\Controllers\NoteTagController;
@@ -174,16 +173,6 @@ Route::prefix('v1')->group(function () {
                 Route::post('{financeGoal}/complete', [FinanceGoalController::class, 'complete']);
                 Route::delete('{financeGoal}', [FinanceGoalController::class, 'destroy']);
             });
-        });
-
-        // Goals
-        Route::prefix('goals')->group(function () {
-            Route::get('/', [GoalController::class, 'index']);
-            Route::post('/', [GoalController::class, 'store']);
-            Route::get('{goal}', [GoalController::class, 'show']);
-            Route::put('{goal}', [GoalController::class, 'update']);
-            Route::delete('{goal}', [GoalController::class, 'destroy']);
-            Route::patch('{goal}/progress', [GoalController::class, 'updateProgress']);
         });
 
         // Calendar

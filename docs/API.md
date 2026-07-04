@@ -429,33 +429,6 @@ Resumo financeiro mensal.
 
 ---
 
-## Goals
-
-### POST /goals 🔒
-Criar meta.
-
-**Body:**
-```json
-{
-  "title": "Reserva de emergência",
-  "type": "financial",
-  "target_amount": 30000.00,
-  "current_amount": 5000.00,
-  "target_date": "2026-12-31"
-}
-```
-
-**Valores de `type`:** `financial` · `habit` · `productivity` · `health` · `personal` · `learning`
-
-### PATCH /goals/{id}/progress 🔒
-Atualizar progresso.
-
-**Body:** `{ "current_amount": 7500.00 }`
-
-**Response** inclui `progress_percentage` calculado automaticamente.
-
----
-
 ## Calendar
 
 ### GET /calendar 🔒

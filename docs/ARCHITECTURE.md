@@ -11,8 +11,7 @@ app/Domains/
 ├── Auth/           Autenticação e gerenciamento de sessão
 ├── Tasks/          Gerenciamento de tarefas
 ├── Habits/         Tracking de hábitos
-├── Finance/        Controle financeiro
-├── Goals/          Metas pessoais
+├── Finance/        Controle financeiro (inclui metas financeiras)
 ├── Calendar/       Eventos e agenda
 ├── Reports/        Dashboard e relatórios consolidados
 └── Shared/         Código compartilhado entre domínios

@@ -12,8 +12,7 @@ app/
 │   ├── Auth/           login, register, forgot/reset password
 │   ├── Tasks/          tasks, subtasks, labels, recurrence
 │   ├── Habits/         habits, logs, streaks, heatmap
-│   ├── Finance/        bank accounts, credit cards, transactions, categories
-│   ├── Goals/          goals with progress tracking
+│   ├── Finance/        bank accounts, credit cards, transactions, categories, goals
 │   ├── Calendar/       events (Google Calendar ready)
 │   ├── Reports/        dashboard, weekly productivity
 │   └── Shared/         DTOs compartilhados
@@ -133,7 +132,6 @@ Todas as rotas autenticadas usam `middleware('auth:sanctum')`.
 | Tasks | `/api/v1/tasks` | ✅ |
 | Habits | `/api/v1/habits` | ✅ |
 | Finance | `/api/v1/finance` | ✅ |
-| Goals | `/api/v1/goals` | ✅ |
 | Calendar | `/api/v1/calendar` | ✅ |
 | Reports | `/api/v1/reports` | ✅ |
 

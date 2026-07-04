@@ -27,7 +27,7 @@ class ResetUserDataAction
             DB::table('habits')->where('user_id', $userId)->delete();
 
             // Other domains
-            DB::table('goals')->where('user_id', $userId)->delete();
+            DB::table('finance_goals')->where('user_id', $userId)->delete();
             DB::table('calendar_events')->where('user_id', $userId)->delete();
 
             // Notes: notes cascade-deletes note_note_tag via FK

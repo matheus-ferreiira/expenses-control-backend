@@ -51,8 +51,7 @@ app/Domains/
 ├── Auth/       Autenticação (register, login, forgot/reset password)
 ├── Tasks/      Tarefas com subtasks, labels, recorrência, arquivo
 ├── Habits/     Hábitos com streaks, heatmap, estatísticas
-├── Finance/    Contas, cartões, transações, categorias, relatórios
-├── Goals/      Metas com tracking de progresso automático
+├── Finance/    Contas, cartões, transações, categorias, metas, relatórios
 ├── Calendar/   Agenda (preparado para Google Calendar)
 ├── Reports/    Dashboard consolidado e relatórios
 └── Shared/     DTOs compartilhados
@@ -153,17 +152,6 @@ DELETE /finance/categories/{id}    Deletar
 GET  /finance/reports/monthly      Resumo mensal (?year=&month=)
 GET  /finance/reports/yearly       Resumo anual (?year=)
 GET  /finance/reports/cashflow     Fluxo de caixa (?start_date=&end_date=)
-```
-
-### Metas
-
-```
-GET    /goals                Lista paginada
-POST   /goals                Criar meta
-GET    /goals/{id}           Detalhes
-PUT    /goals/{id}           Atualizar
-DELETE /goals/{id}           Deletar
-PATCH  /goals/{id}/progress  Atualizar progresso atual
 ```
 
 ### Agenda

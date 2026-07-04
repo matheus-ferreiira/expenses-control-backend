@@ -22,8 +22,6 @@ use App\Domains\Finance\Policies\FinanceGoalPolicy;
 use App\Domains\Finance\Policies\TransactionCategoryPolicy;
 use App\Domains\Finance\Policies\TransactionPolicy;
 use App\Domains\Finance\Policies\TransactionTagPolicy;
-use App\Domains\Goals\Models\Goal;
-use App\Domains\Goals\Policies\GoalPolicy;
 use App\Domains\Habits\Models\Habit;
 use App\Domains\Habits\Policies\HabitPolicy;
 use App\Domains\Notes\Models\Note;
@@ -79,7 +77,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Transaction::class, TransactionPolicy::class);
         Gate::policy(TransactionCategory::class, TransactionCategoryPolicy::class);
         Gate::policy(TransactionTag::class, TransactionTagPolicy::class);
-        Gate::policy(Goal::class, GoalPolicy::class);
         Gate::policy(CalendarEvent::class, CalendarEventPolicy::class);
         Gate::policy(Note::class, NotePolicy::class);
         Gate::policy(NoteTag::class, NoteTagPolicy::class);

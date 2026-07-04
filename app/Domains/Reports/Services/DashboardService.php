@@ -5,8 +5,9 @@ namespace App\Domains\Reports\Services;
 use App\Domains\Calendar\Models\CalendarEvent;
 use App\Domains\Finance\Enums\TransactionType;
 use App\Domains\Finance\Models\BankAccount;
+use App\Domains\Finance\Models\FinanceGoal;
 use App\Domains\Finance\Models\Transaction;
-use App\Domains\Goals\Models\Goal;
+use App\Domains\Finance\Resources\FinanceGoalResource;
 use App\Domains\Habits\Models\Habit;
 use App\Domains\Tasks\Models\Task;
 use App\Models\User;
@@ -82,14 +83,16 @@ final class DashboardService
 
     private function getGoalsSummary(User $user): array
     {
-        $goals = Goal::forUser($user->id)->active()->get();
+        $goals = FinanceGoal::forUser($user->id)->active()->with('bankAccount')->get();
 
         return [
             'active_count' => $goals->count(),
             'near_deadline' => $goals->filter(
-                fn ($g) => $g->target_date && $g->target_date->isFuture() && $g->target_date->diffInDays(now()) <= 30
+                fn ($g) => $g->deadline && $g->deadline->isFuture() && $g->deadline->diffInDays(now()) <= 30
             )->count(),
-            'recent' => $goals->sortBy('target_date')->take(3)->values(),
+            'recent' => FinanceGoalResource::collection(
+                $goals->sortBy(fn ($g) => $g->deadline?->timestamp ?? PHP_INT_MAX)->take(3)->values()
+            ),
         ];
     }
 
