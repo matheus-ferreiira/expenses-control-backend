@@ -117,6 +117,8 @@ Route::prefix('v1')->group(function () {
             Route::get('balance', [BankAccountController::class, 'consolidatedBalance']);
 
             Route::apiResource('accounts', BankAccountController::class);
+            Route::get('accounts/{account}/balance-at', [BankAccountController::class, 'balanceAt']);
+            Route::post('accounts/{account}/balance-observations', [BankAccountController::class, 'observeBalance']);
 
             // Credit Cards (nested under accounts)
             Route::post('accounts/{bankAccount}/cards', [CreditCardController::class, 'store']);
@@ -127,6 +129,7 @@ Route::prefix('v1')->group(function () {
             Route::get('cards/{creditCard}', [CreditCardController::class, 'show']);
             Route::post('cards/{creditCard}/pay-statement', [CreditCardController::class, 'payStatement']);
             Route::get('cards/{creditCard}/statement-payment', [CreditCardController::class, 'statementPayment']);
+            Route::get('cards/{creditCard}/statement', [CreditCardController::class, 'statement']);
             Route::put('cards/{creditCard}', [CreditCardController::class, 'update']);
             Route::patch('cards/{creditCard}', [CreditCardController::class, 'update']);
             Route::delete('cards/{creditCard}', [CreditCardController::class, 'destroy']);

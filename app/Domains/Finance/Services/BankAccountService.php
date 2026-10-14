@@ -10,6 +10,7 @@ use App\Domains\Finance\Models\Transaction;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 
 final class BankAccountService
 {
@@ -55,6 +56,15 @@ final class BankAccountService
     public function getHistoricalBalance(User $user, int $year, int $month): array
     {
         $accounts = BankAccount::forUser($user->id)->active()->get();
+        if (DB::table('account_balance_checkpoints')->where('user_id', $user->id)->where('kind', 'opening')->exists()) {
+            $date = Carbon::createFromDate($year, $month, 1)->endOfMonth()->toDateString();
+            $balances = $accounts->map(fn ($account) => app(AccountBalanceHistory::class)->at($account, $date));
+            $known = $balances->whereNotNull('balance_cents')->sum('balance_cents');
+            $pending = Transaction::forUser($user->id)->pending()->whereNotNull('account_id')->where('transaction_date', '>=', today()->toDateString())->where('transaction_date', '<=', $date)->get();
+            $delta = $pending->sum(fn ($t) => FinancialEffects::cents($t->amount) * ($t->type === TransactionType::Income ? 1 : -1) + ($t->type === TransactionType::Transfer && $t->destination_account_id ? FinancialEffects::cents($t->amount) : 0));
+
+            return ['balance' => $known / 100, 'projected_balance' => ($known + $delta) / 100, 'accounts' => $balances, 'unverified_accounts' => $balances->whereNull('balance_cents')->pluck('account_id')];
+        }
         $currentBalance = (float) $accounts->sum('balance');
         $today = Carbon::today();
 

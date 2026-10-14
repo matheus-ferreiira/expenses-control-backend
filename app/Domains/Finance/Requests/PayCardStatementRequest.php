@@ -14,6 +14,7 @@ class PayCardStatementRequest extends BaseFormRequest
             'amount' => ['required', 'numeric', 'min:0.01'],
             'statement_month' => ['required', 'date_format:Y-m'],
             'payment_date' => ['nullable', 'date'],
+            'payment_reference' => ['nullable', 'uuid'],
         ];
     }
 }

@@ -14,6 +14,7 @@ use App\Domains\Finance\Requests\UpdateCreditCardRequest;
 use App\Domains\Finance\Resources\CreditCardResource;
 use App\Domains\Finance\Resources\TransactionResource;
 use App\Domains\Finance\Services\BankAccountService;
+use App\Domains\Finance\Services\CardStatementSummary;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -88,9 +89,10 @@ class CreditCardController extends Controller
             (float) $validated['amount'],
             $validated['statement_month'],
             $validated['payment_date'] ?? null,
+            $validated['payment_reference'] ?? null,
         );
 
-        return $this->created(new TransactionResource($transaction), 'Statement paid');
+        return $this->created(new TransactionResource($transaction), 'Payment recorded');
     }
 
     /** Payment (if any) that settled the given statement month of this card. */
@@ -107,5 +109,16 @@ class CreditCardController extends Controller
             ->first();
 
         return $this->success($payment ? new TransactionResource($payment) : null);
+    }
+
+    public function statement(Request $request, CreditCard $creditCard): JsonResponse
+    {
+        $this->authorize('view', $creditCard);
+        $data = $request->validate(['cycle' => ['required', 'date_format:Y-m']]);
+        $summary = app(CardStatementSummary::class)->get($creditCard, $data['cycle']);
+        $summary['transactions'] = TransactionResource::collection($summary['transactions']);
+        $summary['payments'] = TransactionResource::collection($summary['payments']);
+
+        return $this->success($summary);
     }
 }

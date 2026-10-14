@@ -17,11 +17,14 @@ final class ConfirmTransactionAction
      */
     public function execute(Transaction $transaction): Transaction
     {
-        if ($transaction->isConfirmed()) {
-            return $transaction;
-        }
-
         return DB::transaction(function () use ($transaction) {
+            $transaction = Transaction::forUser($transaction->user_id)->whereKey($transaction->id)->lockForUpdate()->firstOrFail();
+            if ($transaction->isConfirmed()) {
+                return $transaction;
+            }
+            if ($transaction->import_batch_id && $transaction->account_id) {
+                \App\Domains\Finance\Services\RecoveryRecordGuard::editable($transaction);
+            }
             $transaction->update(['status' => TransactionStatus::Confirmed->value]);
 
             if ($transaction->account_id) {

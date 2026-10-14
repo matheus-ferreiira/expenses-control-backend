@@ -3,11 +3,10 @@
 namespace App\Domains\Reports\Services;
 
 use App\Domains\Calendar\Models\CalendarEvent;
-use App\Domains\Finance\Enums\TransactionType;
 use App\Domains\Finance\Models\BankAccount;
 use App\Domains\Finance\Models\FinanceGoal;
-use App\Domains\Finance\Models\Transaction;
 use App\Domains\Finance\Resources\FinanceGoalResource;
+use App\Domains\Finance\Services\FinanceReportService;
 use App\Domains\Habits\Models\Habit;
 use App\Domains\Tasks\Models\Task;
 use App\Models\User;
@@ -62,12 +61,9 @@ final class DashboardService
 
     private function getFinanceSummary(User $user, Carbon $today, Carbon $startOfMonth, Carbon $endOfMonth): array
     {
-        $monthTransactions = Transaction::forUser($user->id)
-            ->inPeriod($startOfMonth->toDateString(), $endOfMonth->toDateString())
-            ->get();
-
-        $income = $monthTransactions->where('type', TransactionType::Income)->sum('amount');
-        $expenses = $monthTransactions->where('type', TransactionType::Expense)->sum('amount');
+        $summary = app(FinanceReportService::class)->getMonthlySummary($user, $today->year, $today->month);
+        $income = $summary['income'];
+        $expenses = $summary['expenses'];
 
         $totalBalance = BankAccount::forUser($user->id)->active()->sum('balance');
 
@@ -75,7 +71,7 @@ final class DashboardService
             'total_balance' => (float) $totalBalance,
             'month_income' => (float) $income,
             'month_expenses' => (float) $expenses,
-            'month_balance' => (float) ($income - $expenses),
+            'month_balance' => $summary['balance'],
             'month' => $today->month,
             'year' => $today->year,
         ];

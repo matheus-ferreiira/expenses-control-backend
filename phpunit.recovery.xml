@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="tools/recovery/mysql_bootstrap.php" colors="true" cacheDirectory="storage/framework/recovery-phpunit">
+    <testsuites>
+        <testsuite name="Recovery"><directory>tests/Feature/Finance</directory><directory>tests/Unit</directory></testsuite>
+    </testsuites>
+</phpunit>

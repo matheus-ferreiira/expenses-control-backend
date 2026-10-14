@@ -27,8 +27,6 @@ final class TransactionService
 
     public function list(User $user, array $filters = []): LengthAwarePaginator
     {
-        $this->keepRecurrencesRolling($user);
-
         $query = Transaction::forUser($user->id)
             ->with(['category', 'account', 'destinationAccount', 'card', 'tags', 'goal']);
 
@@ -116,11 +114,12 @@ final class TransactionService
 
     public function delete(Transaction $transaction): void
     {
+        RecoveryRecordGuard::editable($transaction, 'all');
         DB::transaction(function () use ($transaction) {
             if ($transaction->installment_group_id) {
                 // Cascade-delete all installments in the group; reverse balance for confirmed ones
                 /** @var Collection<int, Transaction> $group */
-                $group = Transaction::where('installment_group_id', $transaction->installment_group_id)->get();
+                $group = Transaction::forUser($transaction->user_id)->where('installment_group_id', $transaction->installment_group_id)->get();
 
                 foreach ($group as $occurrence) {
                     if ($occurrence->isConfirmed() && $occurrence->account_id) {
@@ -141,7 +140,7 @@ final class TransactionService
             if ($transaction->recurrence_group_id) {
                 // Cascade-delete all occurrences; only reverse balance for confirmed ones
                 /** @var Collection<int, Transaction> $group */
-                $group = Transaction::where('recurrence_group_id', $transaction->recurrence_group_id)->get();
+                $group = Transaction::forUser($transaction->user_id)->where('recurrence_group_id', $transaction->recurrence_group_id)->get();
 
                 foreach ($group as $occurrence) {
                     if ($occurrence->isConfirmed() && $occurrence->account_id) {

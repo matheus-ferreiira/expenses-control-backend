@@ -2,6 +2,7 @@
 
 namespace App\Domains\Finance\Resources;
 
+use App\Domains\Finance\Services\FinancialEffects;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -19,6 +20,13 @@ class TransactionResource extends JsonResource
             'goal_id' => $this->goal_id,
             'type' => $this->type?->value,
             'amount' => (float) $this->amount,
+            'economic_kind' => $this->economic_kind,
+            'classification_status' => $this->classification_status,
+            'reconciliation_status' => $this->reconciliation_status,
+            'economic_effect' => app(FinancialEffects::class)->economic($this->resource),
+            'original_purchase_on' => $this->original_purchase_on,
+            'statement_due_on' => $this->statement_due_on,
+            'recovery_locked' => $this->import_batch_id !== null,
             'description' => $this->description,
             'notes' => $this->notes,
             'transaction_date' => $this->transaction_date?->toDateString(),
@@ -40,8 +48,8 @@ class TransactionResource extends JsonResource
                 'color' => $this->goal->color,
                 'icon' => $this->goal->icon,
             ]),
-            'created_at' => $this->created_at->toISOString(),
-            'updated_at' => $this->updated_at->toISOString(),
+            'created_at' => $this->created_at?->toISOString(),
+            'updated_at' => $this->updated_at?->toISOString(),
         ];
     }
 }

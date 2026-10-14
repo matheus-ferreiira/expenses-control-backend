@@ -7,6 +7,7 @@ use App\Domains\Finance\Enums\TransactionStatus;
 use App\Domains\Finance\Enums\TransactionType;
 use App\Domains\Finance\Models\BankAccount;
 use App\Domains\Finance\Models\Transaction;
+use App\Domains\Finance\Services\RecoveryRecordGuard;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -26,6 +27,8 @@ final class UpdateTransactionAction
 
     public function execute(Transaction $transaction, TransactionDTO $dto, string $scope = 'this_only'): Transaction
     {
+        RecoveryRecordGuard::editable($transaction, $scope);
+
         return DB::transaction(function () use ($transaction, $dto, $scope) {
             if ($scope === 'this_and_future' || $scope === 'all') {
                 return $this->executeBulk($transaction, $dto, $scope);
@@ -162,15 +165,18 @@ final class UpdateTransactionAction
 
     private function executeBulk(Transaction $transaction, TransactionDTO $dto, string $scope): Transaction
     {
+        if (! $transaction->installment_group_id && ! $transaction->recurrence_group_id) {
+            return $this->executeSingle($transaction, $dto);
+        }
         // Installment group takes priority if this transaction belongs to one
         if ($transaction->installment_group_id) {
-            $query = Transaction::where('installment_group_id', $transaction->installment_group_id);
+            $query = Transaction::forUser($transaction->user_id)->where('installment_group_id', $transaction->installment_group_id);
 
             if ($scope === 'this_and_future') {
                 $query->where('installment_number', '>=', $transaction->installment_number);
             }
         } else {
-            $query = Transaction::where('recurrence_group_id', $transaction->recurrence_group_id);
+            $query = Transaction::forUser($transaction->user_id)->where('recurrence_group_id', $transaction->recurrence_group_id);
 
             if ($scope === 'this_and_future') {
                 $query->where('transaction_date', '>=', $transaction->transaction_date->toDateString());

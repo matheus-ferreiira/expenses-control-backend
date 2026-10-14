@@ -9,6 +9,13 @@ use App\Models\User;
 
 final class FinanceReportService
 {
+    private function total($transactions, string $kind): float
+    {
+        $effects = app(FinancialEffects::class);
+
+        return $transactions->sum(fn ($transaction) => $effects->economic($transaction)[$kind]) / 100;
+    }
+
     public function getMonthlySummary(User $user, int $year, int $month): array
     {
         $transactions = Transaction::forUser($user->id)
@@ -21,16 +28,15 @@ final class FinanceReportService
 
         // Goal contributions (aportes) are SAVINGS, not spending — kept out of
         // "expenses" so the report never punishes the user for saving money.
-        $income = $confirmed->where('type', TransactionType::Income)->sum('amount');
-        $expenses = $confirmed->where('type', TransactionType::Expense)->whereNull('goal_id')->sum('amount');
+        $income = $this->total($confirmed, 'income');
+        $expenses = $this->total($confirmed, 'expense');
         $saved = $confirmed->where('type', TransactionType::Expense)->whereNotNull('goal_id')->sum('amount');
-        $pendingIncome = $pending->where('type', TransactionType::Income)->sum('amount');
-        $pendingExpenses = $pending->where('type', TransactionType::Expense)->whereNull('goal_id')->sum('amount');
+        $pendingIncome = $this->total($pending, 'income');
+        $pendingExpenses = $this->total($pending, 'expense');
         $pendingSaved = $pending->where('type', TransactionType::Expense)->whereNotNull('goal_id')->sum('amount');
 
         $expensesByCategory = $confirmed
-            ->where('type', TransactionType::Expense)
-            ->whereNull('goal_id')
+            ->filter(fn ($transaction) => app(FinancialEffects::class)->economic($transaction)['expense'] !== 0)
             ->groupBy('category_id')
             ->map(function ($group) {
                 $first = $group->first();
@@ -38,7 +44,7 @@ final class FinanceReportService
                 return [
                     'category' => $first->category?->name ?? 'Sem categoria',
                     'color' => $first->category?->color ?? '#888',
-                    'total' => $group->sum('amount'),
+                    'total' => $this->total($group, 'expense'),
                     'count' => $group->count(),
                     'percentage' => 0,
                 ];
@@ -79,8 +85,8 @@ final class FinanceReportService
             $data = $transactions->filter(fn ($t) => $t->transaction_date->month === $m);
             $confirmedData = $data->where('status', TransactionStatus::Confirmed);
             $pendingData = $data->where('status', TransactionStatus::Pending);
-            $income = (float) $confirmedData->where('type', TransactionType::Income)->sum('amount');
-            $expenses = (float) $confirmedData->where('type', TransactionType::Expense)->whereNull('goal_id')->sum('amount');
+            $income = $this->total($confirmedData, 'income');
+            $expenses = $this->total($confirmedData, 'expense');
             $saved = (float) $confirmedData->where('type', TransactionType::Expense)->whereNotNull('goal_id')->sum('amount');
             $months[$m] = [
                 'month' => $m,
@@ -88,8 +94,8 @@ final class FinanceReportService
                 'expenses' => $expenses,
                 'saved' => $saved,
                 'balance' => $income - $expenses - $saved,
-                'pending_income' => (float) $pendingData->where('type', TransactionType::Income)->sum('amount'),
-                'pending_expenses' => (float) $pendingData->where('type', TransactionType::Expense)->whereNull('goal_id')->sum('amount'),
+                'pending_income' => $this->total($pendingData, 'income'),
+                'pending_expenses' => $this->total($pendingData, 'expense'),
             ];
         }
 
@@ -98,27 +104,6 @@ final class FinanceReportService
 
     public function getCashFlow(User $user, string $startDate, string $endDate): array
     {
-        $transactions = Transaction::forUser($user->id)
-            ->inPeriod($startDate, $endDate)
-            ->orderBy('transaction_date')
-            ->get();
-
-        $confirmedAll = $transactions->where('status', TransactionStatus::Confirmed);
-
-        $byDate = $confirmedAll->groupBy(fn ($t) => $t->transaction_date->toDateString())
-            ->map(function ($group) {
-                return [
-                    'income' => (float) $group->where('type', TransactionType::Income)->sum('amount'),
-                    'expenses' => (float) $group->where('type', TransactionType::Expense)->sum('amount'),
-                ];
-            });
-
-        return [
-            'start_date' => $startDate,
-            'end_date' => $endDate,
-            'total_income' => (float) $confirmedAll->where('type', TransactionType::Income)->sum('amount'),
-            'total_expenses' => (float) $confirmedAll->where('type', TransactionType::Expense)->sum('amount'),
-            'by_date' => $byDate,
-        ];
+        return app(CashFlowSummary::class)->get($user->id, $startDate, $endDate);
     }
 }
