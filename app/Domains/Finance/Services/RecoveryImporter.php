@@ -30,6 +30,34 @@ final class RecoveryImporter
         return $row ? (array) $row : null;
     }
 
+    private function images(string $table, array $ids): array
+    {
+        $result = [];
+        sort($ids);
+        foreach (array_chunk(array_unique($ids), 300) as $chunk) {
+            foreach (DB::table($table)->whereIn('id', $chunk)->orderBy('id')->lockForUpdate()->get() as $row) {
+                $result[$row->id] = (array) $row;
+            }
+        }
+
+        return $result;
+    }
+
+    private function insertRows(string $table, array $rows): void
+    {
+        // Different optional columns must retain their database defaults.
+        $groups = [];
+        foreach ($rows as $row) {
+            ksort($row);
+            $groups[implode('|', array_keys($row))][] = $row;
+        }
+        foreach ($groups as $group) {
+            foreach (array_chunk($group, 200) as $chunk) {
+                DB::table($table)->insert($chunk);
+            }
+        }
+    }
+
     private function journal(string $batch, string $table, string $id, ?array $before): void
     {
         $after = $this->image($table, $id);
@@ -62,8 +90,9 @@ final class RecoveryImporter
                 if (! in_array($table, ['transactions', 'bank_accounts', 'credit_cards', 'transaction_categories'], true)) {
                     throw new RuntimeException('Invalid baseline table');
                 }
+                $baselineImages = $this->images($table, array_column($rows, 'id'));
                 foreach ($rows as $row) {
-                    $current = $this->image($table, $row['id']);
+                    $current = $baselineImages[$row['id']] ?? null;
                     if (! $current || $current['user_id'] !== $uid) {
                         throw new RuntimeException('Missing or foreign baseline');
                     }
@@ -80,27 +109,29 @@ final class RecoveryImporter
                 throw new RuntimeException('Additional transactions since snapshot');
             }
             $report = ['replay' => false, 'inserted' => 0, 'updated' => 0, 'sources' => count($plan['sources']), 'conflicts' => count($plan['conflicts']), 'dry_run' => $dryRun];
+            $recordImages = $this->images('transactions', array_column($plan['records'], 'id'));
+            $relations = [];
+            foreach (['bank_accounts', 'credit_cards', 'transaction_categories', 'finance_goals'] as $table) {
+                $relations[$table] = DB::table($table)->where('user_id', $uid)->lockForUpdate()->get()->keyBy('id')->all();
+            }
             foreach ($plan['records'] as $record) {
-                $current = $this->image('transactions', $record['id']);
+                $current = $recordImages[$record['id']] ?? null;
                 if (($record['before'] === null) !== ($current === null)) {
                     throw new RuntimeException('Insertion/precondition conflict');
                 }
                 foreach (['account_id' => 'bank_accounts', 'destination_account_id' => 'bank_accounts', 'card_id' => 'credit_cards', 'category_id' => 'transaction_categories', 'goal_id' => 'finance_goals'] as $key => $table) {
-                    $relation = DB::table($table)->where('id', $record['after'][$key] ?? null)->where('user_id', $uid);
-                    if ($table !== 'transaction_categories') {
-                        $relation->whereNull('deleted_at');
-                    }
-                    if (! empty($record['after'][$key]) && ! $relation->exists()) {
+                    $relation = $relations[$table][$record['after'][$key] ?? ''] ?? null;
+                    if (! empty($record['after'][$key]) && (! $relation || ($table !== 'transaction_categories' && $relation->deleted_at !== null))) {
                         throw new RuntimeException('Foreign or deleted relation: '.$key);
                     }
                 }
                 $report[$current ? 'updated' : 'inserted']++;
             }
+            if (DB::table('import_sources')->where('user_id', $uid)->whereIn('source_key', array_column($plan['sources'], 'key'))->exists()) {
+                throw new RuntimeException('Source already imported');
+            }
             foreach ($plan['sources'] as $source) {
-                if (DB::table('import_sources')->where('user_id', $uid)->where('source_key', $source['key'])->exists()) {
-                    throw new RuntimeException('Source already imported');
-                }
-                if ($source['cash'] && ! DB::table('bank_accounts')->where('id', $source['cash']['account_id'])->where('user_id', $uid)->exists()) {
+                if ($source['cash'] && ! isset($relations['bank_accounts'][$source['cash']['account_id']])) {
                     throw new RuntimeException('Foreign cash account');
                 }
             }
@@ -110,16 +141,20 @@ final class RecoveryImporter
             $batch = (string) Str::uuid();
             DB::table('import_batches')->insert(['id' => $batch, 'user_id' => $uid, 'reference' => $plan['batch_id'], 'plan_hash' => $plan['plan_hash'], 'version' => 3, 'status' => 'applied', 'cutoff' => $plan['cutoff'], 'report' => json_encode($report), 'created_at' => now(), 'updated_at' => now()]);
             $sourceIds = [];
+            $sourceRows = [];
             foreach ($plan['sources'] as $source) {
                 $id = $sourceIds[$source['key']] = (string) Str::uuid();
-                DB::table('import_sources')->insert([
+                $sourceRows[] = [
                     'id' => $id, 'batch_id' => $batch, 'user_id' => $uid, 'source_key' => $source['key'], 'kind' => $source['kind'], 'file' => $source['file'], 'sha256' => $source['sha256'],
                     'locator' => json_encode($source['locator']), 'payload' => json_encode($source['payload']), 'account_id' => $source['cash']['account_id'] ?? null,
                     'posted_on' => $source['cash']['date'] ?? null, 'cash_cents' => $source['cash']['cents'] ?? 0, 'reconciliation_status' => $source['ready'] ? 'matched' : 'conflict',
-                ]);
+                ];
             }
+            $this->insertRows('import_sources', $sourceRows);
+            $newRecords = [];
+            $links = [];
             foreach ($plan['records'] as $record) {
-                $before = $this->image('transactions', $record['id']);
+                $before = $recordImages[$record['id']] ?? null;
                 $after = $record['after'] + ['import_batch_id' => $batch];
                 if (! $before) {
                     $after += ['created_at' => now(), 'updated_at' => now()];
@@ -132,13 +167,24 @@ final class RecoveryImporter
                 if ($before) {
                     DB::table('transactions')->where('id', $record['id'])->update($after);
                 } else {
-                    DB::table('transactions')->insert($after);
+                    $newRecords[] = $after;
                 }
-                $this->journal($batch, 'transactions', $record['id'], $before);
                 foreach ($record['source_keys'] as $key) {
-                    DB::table('transaction_sources')->insert(['source_id' => $sourceIds[$key], 'transaction_id' => $record['id'], 'role' => $record['conflict'] ? 'candidate' : 'evidence']);
+                    $links[] = ['source_id' => $sourceIds[$key], 'transaction_id' => $record['id'], 'role' => $record['conflict'] ? 'candidate' : 'evidence'];
                 }
             }
+            $this->insertRows('transactions', $newRecords);
+            $afterImages = $this->images('transactions', array_column($plan['records'], 'id'));
+            $journal = [];
+            foreach ($plan['records'] as $record) {
+                $before = $recordImages[$record['id']] ?? null;
+                $after = $afterImages[$record['id']];
+                $journal[] = ['batch_id' => $batch, 'target_table' => 'transactions', 'target_id' => $record['id'],
+                    'before' => $before === null ? null : json_encode($before, JSON_THROW_ON_ERROR),
+                    'after' => json_encode($after, JSON_THROW_ON_ERROR), 'after_hash' => RecoveryPlan::hash($after)];
+            }
+            $this->insertRows('import_changes', $journal);
+            $this->insertRows('transaction_sources', $links);
             $lunch = $plan['manual_lunch_settlement'];
             $lunchTransaction = DB::table('transaction_sources')->where('source_id', $sourceIds[$lunch['expense_source']])->value('transaction_id');
             if (! $lunchTransaction || $lunch['gross_cents'] !== $lunch['personal_cents'] + $lunch['repaid_cents'] + $lunch['receivable_remaining_cents']) {
