@@ -127,6 +127,37 @@ class CardOverviewTest extends TestCase
         $this->assertSame(52567 + 5000, $data['open']['charges_cents']);
     }
 
+    public function test_projected_balance_subtracts_card_statements_due(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-15 12:00:00', 'America/Sao_Paulo'));
+        [$user] = $this->scenario();
+
+        $october = $this->actingAs($user, 'sanctum')->getJson('/api/v1/finance/balance/historical?month=10&year=2026')->assertOk()->json('data');
+        $november = $this->actingAs($user, 'sanctum')->getJson('/api/v1/finance/balance/historical?month=11&year=2026')->assertOk()->json('data');
+        $september = $this->actingAs($user, 'sanctum')->getJson('/api/v1/finance/balance/historical?month=9&year=2026')->assertOk()->json('data');
+
+        $this->assertEquals(560.15, $october['card_due']);
+        $this->assertEqualsWithDelta(5000 - 560.15, $october['projected_balance'], 0.001);
+        // Future months accumulate: October statement + November statement.
+        $this->assertEqualsWithDelta(5000 - 560.15 - 525.67, $november['projected_balance'], 0.001);
+        $this->assertSame(['2026-10', '2026-11'], array_column($november['card_statements'], 'cycle'));
+        // Past months are history: nothing to subtract.
+        $this->assertEquals(0, $september['card_due']);
+    }
+
+    public function test_scheduled_statement_payment_is_not_subtracted_twice(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-15 12:00:00', 'America/Sao_Paulo'));
+        [$user, $account, $card] = $this->scenario();
+        DB::table('account_balance_checkpoints')->insert(['id' => (string) Str::uuid(), 'user_id' => $user->id, 'account_id' => $account->id, 'observed_on' => '2026-10-01', 'balance_cents' => 500000, 'kind' => 'opening', 'evidence' => 'fixture', 'created_at' => now(), 'updated_at' => now()]);
+        Transaction::factory()->create(['user_id' => $user->id, 'account_id' => $account->id, 'card_id' => $card->id, 'statement_month' => '2026-10', 'type' => 'transfer', 'amount' => '560.15', 'transaction_date' => '2026-10-18', 'status' => 'pending']);
+
+        $october = $this->actingAs($user, 'sanctum')->getJson('/api/v1/finance/balance/historical?month=10&year=2026')->assertOk()->json('data');
+
+        $this->assertEquals(5000, $october['balance']);
+        $this->assertEqualsWithDelta(5000 - 560.15, $october['projected_balance'], 0.001);
+    }
+
     public function test_user_cannot_see_another_users_card_overview(): void
     {
         [, , $card] = $this->scenario();

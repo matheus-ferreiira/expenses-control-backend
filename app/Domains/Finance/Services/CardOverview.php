@@ -21,6 +21,37 @@ final class CardOverview
     {
         $today ??= CardCycle::today($card);
         $openCycle = CardCycle::cycleFor($card, $today);
+        $statements = $this->statements($card, $today);
+        $usedCents = array_sum(array_column($statements, 'remaining_cents'));
+
+        $toPay = array_values(array_filter($statements, fn ($s) => in_array($s['status'], ['closed', 'partial', 'overdue'], true)));
+        $upcoming = array_values(array_filter($statements, fn ($s) => $s['cycle'] > $openCycle && $s['charges_cents'] > 0));
+        $limitCents = FinancialEffects::cents($card->limit_amount);
+
+        return [
+            'card_id' => $card->id,
+            'today' => $today->toDateString(),
+            'open_cycle' => $openCycle,
+            'to_pay' => $toPay,
+            'open' => $statements[$openCycle],
+            'upcoming' => array_slice($upcoming, 0, self::UPCOMING_LIMIT),
+            'upcoming_total_cents' => array_sum(array_column($upcoming, 'remaining_cents')),
+            'limit_cents' => $limitCents,
+            'used_cents' => $usedCents,
+            'available_cents' => $limitCents - $usedCents,
+        ];
+    }
+
+    /**
+     * Every statement of the card that has charges or payments (plus the open one), keyed by cycle.
+     * remaining_cents is what is still owed; historical statements owe nothing.
+     *
+     * @return array<string, array{cycle: string, start_on: string, closing_on: string, due_on: string, status: string, charges_cents: int, paid_cents: int, remaining_cents: int}>
+     */
+    public function statements(CreditCard $card, ?CarbonInterface $today = null): array
+    {
+        $today ??= CardCycle::today($card);
+        $openCycle = CardCycle::cycleFor($card, $today);
 
         $charges = [];
         $paid = [];
@@ -46,13 +77,11 @@ final class CardOverview
         $cycles = array_unique([...array_keys($charges), ...array_keys($paid), $openCycle]);
         sort($cycles);
         $statements = [];
-        $usedCents = 0;
         foreach ($cycles as $cycle) {
             $isHistorical = isset($historical[$cycle]);
             $c = $charges[$cycle] ?? 0;
             $p = $paid[$cycle] ?? 0;
             $remaining = $isHistorical ? 0 : max(0, $c - $p);
-            $usedCents += $remaining;
             $statements[$cycle] = [
                 'cycle' => $cycle,
                 'start_on' => CardCycle::startDate($card, $cycle)->toDateString(),
@@ -65,21 +94,6 @@ final class CardOverview
             ];
         }
 
-        $toPay = array_values(array_filter($statements, fn ($s) => in_array($s['status'], ['closed', 'partial', 'overdue'], true)));
-        $upcoming = array_values(array_filter($statements, fn ($s) => $s['cycle'] > $openCycle && $s['charges_cents'] > 0));
-        $limitCents = FinancialEffects::cents($card->limit_amount);
-
-        return [
-            'card_id' => $card->id,
-            'today' => $today->toDateString(),
-            'open_cycle' => $openCycle,
-            'to_pay' => $toPay,
-            'open' => $statements[$openCycle],
-            'upcoming' => array_slice($upcoming, 0, self::UPCOMING_LIMIT),
-            'upcoming_total_cents' => array_sum(array_column($upcoming, 'remaining_cents')),
-            'limit_cents' => $limitCents,
-            'used_cents' => $usedCents,
-            'available_cents' => $limitCents - $usedCents,
-        ];
+        return $statements;
     }
 }
