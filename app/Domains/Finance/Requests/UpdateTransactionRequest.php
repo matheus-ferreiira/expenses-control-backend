@@ -18,7 +18,12 @@ class UpdateTransactionRequest extends BaseFormRequest
             'description' => ['sometimes', 'required', 'string', 'max:500'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'transaction_date' => ['sometimes', 'required', 'date'],
-            'account_id' => ['sometimes', 'required', 'uuid', Rule::exists('bank_accounts', 'id')->where('user_id', $this->user()->id)],
+            'account_id' => [
+                'sometimes', 'required',
+                // A card purchase never debits a bank account too (the statement payment does).
+                Rule::prohibitedIf(fn () => $this->input('type') !== 'transfer' && $this->filled('card_id')),
+                'uuid', Rule::exists('bank_accounts', 'id')->where('user_id', $this->user()->id),
+            ],
             'destination_account_id' => ['nullable', 'uuid', Rule::exists('bank_accounts', 'id')->where('user_id', $this->user()->id)],
             'card_id' => ['nullable', 'uuid', Rule::exists('credit_cards', 'id')->where('user_id', $this->user()->id)],
             'category_id' => ['nullable', 'uuid', Rule::exists('transaction_categories', 'id')->where('user_id', $this->user()->id)],
@@ -28,5 +33,10 @@ class UpdateTransactionRequest extends BaseFormRequest
             'tag_ids' => ['sometimes', 'nullable', 'array'],
             'tag_ids.*' => ['uuid', Rule::exists('transaction_tags', 'id')->where('user_id', $this->user()->id)],
         ];
+    }
+
+    public function messages(): array
+    {
+        return ['account_id.prohibited' => 'Escolha a conta ou o cartão, não os dois: a compra no cartão sai da conta só no pagamento da fatura.'];
     }
 }

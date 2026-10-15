@@ -79,6 +79,44 @@ class CardStatementTest extends TestCase
             ->assertUnprocessable();
     }
 
+    public function test_card_purchase_with_bank_account_too_is_rejected_and_debits_nothing(): void
+    {
+        $user = User::factory()->create();
+        $card = $this->makeCard($user);
+        $account = $card->bankAccount;
+        $balanceBefore = (float) $account->balance;
+
+        $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/finance/transactions', [
+                'type' => 'expense', 'amount' => 100, 'description' => 'Jogo', 'transaction_date' => now()->toDateString(),
+                'account_id' => $account->id, 'card_id' => $card->id,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['account_id']);
+
+        $this->assertSame($balanceBefore, (float) $account->fresh()->balance);
+        $this->assertDatabaseCount('transactions', 0);
+    }
+
+    public function test_editing_card_purchase_cannot_add_a_bank_account(): void
+    {
+        $user = User::factory()->create();
+        $card = $this->makeCard($user);
+        $purchase = $this->actingAs($user, 'sanctum')
+            ->postJson('/api/v1/finance/transactions', [
+                'type' => 'expense', 'amount' => 80, 'description' => 'Mercado', 'transaction_date' => now()->toDateString(), 'card_id' => $card->id,
+            ])
+            ->assertCreated()->json('data.id');
+
+        $this->actingAs($user, 'sanctum')
+            ->putJson("/api/v1/finance/transactions/{$purchase}", [
+                'type' => 'expense', 'amount' => 80, 'description' => 'Mercado', 'transaction_date' => now()->toDateString(),
+                'account_id' => $card->bank_account_id, 'card_id' => $card->id,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['account_id']);
+    }
+
     public function test_pay_statement_creates_confirmed_transfer_and_debits_account(): void
     {
         $user = User::factory()->create();

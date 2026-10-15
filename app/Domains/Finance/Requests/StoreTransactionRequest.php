@@ -20,6 +20,8 @@ class StoreTransactionRequest extends BaseFormRequest
             // Card purchases live on the card only (no account); everything else needs an account.
             'account_id' => [
                 Rule::requiredIf(fn () => $this->input('type') === 'transfer' || ! $this->filled('card_id')),
+                // A card purchase never debits a bank account too (the statement payment does).
+                Rule::prohibitedIf(fn () => $this->input('type') !== 'transfer' && $this->filled('card_id')),
                 'nullable', 'uuid', Rule::exists('bank_accounts', 'id')->where('user_id', $this->user()->id),
             ],
             // Transfers go to another account OR to a credit card (statement payment).
@@ -37,5 +39,10 @@ class StoreTransactionRequest extends BaseFormRequest
             'tag_ids' => ['nullable', 'array'],
             'tag_ids.*' => ['uuid', Rule::exists('transaction_tags', 'id')->where('user_id', $this->user()->id)],
         ];
+    }
+
+    public function messages(): array
+    {
+        return ['account_id.prohibited' => 'Escolha a conta ou o cartão, não os dois: a compra no cartão sai da conta só no pagamento da fatura.'];
     }
 }
