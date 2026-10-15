@@ -14,6 +14,7 @@ use App\Domains\Finance\Requests\UpdateCreditCardRequest;
 use App\Domains\Finance\Resources\CreditCardResource;
 use App\Domains\Finance\Resources\TransactionResource;
 use App\Domains\Finance\Services\BankAccountService;
+use App\Domains\Finance\Services\CardOverview;
 use App\Domains\Finance\Services\CardStatementSummary;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
@@ -109,6 +110,14 @@ class CreditCardController extends Controller
             ->first();
 
         return $this->success($payment ? new TransactionResource($payment) : null);
+    }
+
+    /** Statements to pay, open statement, future commitments and real available limit. */
+    public function overview(Request $request, CreditCard $creditCard): JsonResponse
+    {
+        $this->authorize('view', $creditCard);
+
+        return $this->success(app(CardOverview::class)->get($creditCard));
     }
 
     public function statement(Request $request, CreditCard $creditCard): JsonResponse

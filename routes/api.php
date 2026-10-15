@@ -130,6 +130,7 @@ Route::prefix('v1')->group(function () {
             Route::post('cards/{creditCard}/pay-statement', [CreditCardController::class, 'payStatement']);
             Route::get('cards/{creditCard}/statement-payment', [CreditCardController::class, 'statementPayment']);
             Route::get('cards/{creditCard}/statement', [CreditCardController::class, 'statement']);
+            Route::get('cards/{creditCard}/overview', [CreditCardController::class, 'overview']);
             Route::put('cards/{creditCard}', [CreditCardController::class, 'update']);
             Route::patch('cards/{creditCard}', [CreditCardController::class, 'update']);
             Route::delete('cards/{creditCard}', [CreditCardController::class, 'destroy']);
