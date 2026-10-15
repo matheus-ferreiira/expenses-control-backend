@@ -383,4 +383,79 @@ class TransactionsTest extends TestCase
 
         $this->assertDatabaseHas('transactions', ['id' => $transaction->id]);
     }
+
+    // ── Recurrence config survives edits (D-03) ─────────────────────────────────
+
+    private function createMonthlySeries(User $user, BankAccount $account): array
+    {
+        $payload = [
+            'type' => 'expense', 'amount' => 50, 'description' => 'Internet', 'transaction_date' => today()->toDateString(),
+            'account_id' => $account->id, 'is_recurring' => true,
+            'recurrence_config' => ['frequency' => 'monthly', 'end_type' => 'count', 'count' => 6, 'end_date' => null],
+        ];
+        $this->actingAs($user, 'sanctum')->postJson('/api/v1/finance/transactions', $payload)->assertCreated();
+
+        return $payload;
+    }
+
+    public function test_editing_one_occurrence_keeps_recurrence_config(): void
+    {
+        $user = User::factory()->create();
+        $account = BankAccount::factory()->create(['user_id' => $user->id, 'balance' => 1000]);
+        $payload = $this->createMonthlySeries($user, $account);
+        $second = Transaction::forUser($user->id)->orderBy('transaction_date')->skip(1)->first();
+
+        $this->actingAs($user, 'sanctum')
+            ->putJson("/api/v1/finance/transactions/{$second->id}", [...$payload, 'transaction_date' => $second->transaction_date->toDateString(), 'amount' => 60, 'scope' => 'this_only'])
+            ->assertOk();
+
+        $this->assertEquals(60, $second->fresh()->amount);
+        $this->assertSame(6, Transaction::forUser($user->id)->whereNotNull('recurrence_config')->count());
+        $this->assertSame('count', $second->fresh()->recurrence_config['end_type']);
+    }
+
+    public function test_editing_without_sending_config_keeps_it_for_the_whole_series(): void
+    {
+        $user = User::factory()->create();
+        $account = BankAccount::factory()->create(['user_id' => $user->id, 'balance' => 1000]);
+        $payload = $this->createMonthlySeries($user, $account);
+        unset($payload['recurrence_config']);
+        $last = Transaction::forUser($user->id)->orderByDesc('transaction_date')->first();
+
+        $this->actingAs($user, 'sanctum')
+            ->putJson("/api/v1/finance/transactions/{$last->id}", [...$payload, 'transaction_date' => $last->transaction_date->toDateString(), 'amount' => 55, 'scope' => 'this_and_future'])
+            ->assertOk();
+
+        $this->assertSame('monthly', $last->fresh()->recurrence_config['frequency']);
+        $this->assertSame(6, Transaction::forUser($user->id)->whereNotNull('recurrence_config')->count());
+    }
+
+    public function test_changing_frequency_in_edit_is_saved(): void
+    {
+        $user = User::factory()->create();
+        $account = BankAccount::factory()->create(['user_id' => $user->id, 'balance' => 1000]);
+        $payload = $this->createMonthlySeries($user, $account);
+        $first = Transaction::forUser($user->id)->orderBy('transaction_date')->first();
+
+        $this->actingAs($user, 'sanctum')
+            ->putJson("/api/v1/finance/transactions/{$first->id}", [...$payload, 'recurrence_config' => ['frequency' => 'monthly', 'end_type' => 'never', 'count' => null, 'end_date' => null], 'scope' => 'this_only'])
+            ->assertOk();
+
+        $this->assertSame('never', $first->fresh()->recurrence_config['end_type']);
+    }
+
+    public function test_turning_off_recurrence_clears_config(): void
+    {
+        $user = User::factory()->create();
+        $account = BankAccount::factory()->create(['user_id' => $user->id, 'balance' => 1000]);
+        $payload = $this->createMonthlySeries($user, $account);
+        $first = Transaction::forUser($user->id)->orderBy('transaction_date')->first();
+        unset($payload['recurrence_config']);
+
+        $this->actingAs($user, 'sanctum')
+            ->putJson("/api/v1/finance/transactions/{$first->id}", [...$payload, 'is_recurring' => false, 'scope' => 'this_only'])
+            ->assertOk();
+
+        $this->assertNull($first->fresh()->recurrence_config);
+    }
 }

@@ -29,6 +29,7 @@ class UpdateTransactionRequest extends BaseFormRequest
             'category_id' => ['nullable', 'uuid', Rule::exists('transaction_categories', 'id')->where('user_id', $this->user()->id)],
             'goal_id' => ['nullable', 'uuid', Rule::exists('finance_goals', 'id')->where('user_id', $this->user()->id)],
             'is_recurring' => ['sometimes', 'boolean'],
+            'recurrence_config' => ['sometimes', 'nullable', 'array'],
             'scope' => ['nullable', new Enum(RecurrenceUpdateScope::class)],
             'tag_ids' => ['sometimes', 'nullable', 'array'],
             'tag_ids.*' => ['uuid', Rule::exists('transaction_tags', 'id')->where('user_id', $this->user()->id)],

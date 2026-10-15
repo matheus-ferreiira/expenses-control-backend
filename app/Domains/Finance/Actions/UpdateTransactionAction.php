@@ -62,7 +62,7 @@ final class UpdateTransactionAction
             'notes' => $dto->notes,
             'transaction_date' => $dto->transactionDate,
             'is_recurring' => $dto->isRecurring,
-            'recurrence_config' => $dto->recurrenceConfig,
+            'recurrence_config' => $this->recurrenceConfig($transaction, $dto),
             'recurrence_group_id' => $recurrenceGroupId,
         ]);
 
@@ -224,7 +224,7 @@ final class UpdateTransactionAction
                 'notes' => $dto->notes,
                 'transaction_date' => $newDate,
                 'is_recurring' => $dto->isRecurring,
-                'recurrence_config' => $dto->recurrenceConfig,
+                'recurrence_config' => $this->recurrenceConfig($occurrence, $dto),
                 'status' => $newStatus,
             ];
 
@@ -239,6 +239,19 @@ final class UpdateTransactionAction
         }
 
         return $transaction->fresh(['category', 'account', 'card', 'tags']);
+    }
+
+    /**
+     * The series configuration survives edits that do not send it (e.g. changing only the amount).
+     * It is cleared only when the transaction stops being recurring.
+     */
+    private function recurrenceConfig(Transaction $transaction, TransactionDTO $dto): ?array
+    {
+        if (! $dto->isRecurring) {
+            return null;
+        }
+
+        return $dto->recurrenceConfig ?? $transaction->recurrence_config;
     }
 
     // ── Balance helpers ───────────────────────────────────────────────────────
