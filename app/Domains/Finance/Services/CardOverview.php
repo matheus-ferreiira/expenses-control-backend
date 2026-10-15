@@ -22,7 +22,7 @@ final class CardOverview
         $today ??= CardCycle::today($card);
         $openCycle = CardCycle::cycleFor($card, $today);
         $statements = $this->statements($card, $today);
-        $usedCents = array_sum(array_column($statements, 'remaining_cents'));
+        $usedCents = array_sum(array_column($statements, 'committed_cents'));
 
         $toPay = array_values(array_filter($statements, fn ($s) => in_array($s['status'], ['closed', 'partial', 'overdue'], true)));
         $upcoming = array_values(array_filter($statements, fn ($s) => $s['cycle'] > $openCycle && $s['charges_cents'] > 0));
@@ -45,8 +45,11 @@ final class CardOverview
     /**
      * Every statement of the card that has charges or payments (plus the open one), keyed by cycle.
      * remaining_cents is what is still owed; historical statements owe nothing.
+     * committed_cents is the part that already holds the card limit: forecasts (pending charges that
+     * are not installments, e.g. a monthly subscription) count in the statement but not in the limit
+     * until they are charged. Pending installments do hold the limit, as the bank reserves the whole purchase.
      *
-     * @return array<string, array{cycle: string, start_on: string, closing_on: string, due_on: string, status: string, charges_cents: int, paid_cents: int, remaining_cents: int}>
+     * @return array<string, array{cycle: string, start_on: string, closing_on: string, due_on: string, status: string, charges_cents: int, paid_cents: int, remaining_cents: int, committed_cents: int}>
      */
     public function statements(CreditCard $card, ?CarbonInterface $today = null): array
     {
@@ -54,9 +57,10 @@ final class CardOverview
         $openCycle = CardCycle::cycleFor($card, $today);
 
         $charges = [];
+        $forecast = [];
         $paid = [];
         $rows = Transaction::forUser($card->user_id)->where('card_id', $card->id)
-            ->get(['type', 'amount', 'signed_card_cents', 'statement_month', 'import_batch_id', 'transaction_date', 'status']);
+            ->get(['type', 'amount', 'signed_card_cents', 'statement_month', 'import_batch_id', 'transaction_date', 'status', 'installment_number']);
         foreach ($rows as $transaction) {
             if ($transaction->type === TransactionType::Transfer) {
                 if ($transaction->statement_month && $transaction->isConfirmed()) {
@@ -69,6 +73,9 @@ final class CardOverview
                 ?? ($transaction->import_batch_id === null ? CardCycle::cycleFor($card, $transaction->transaction_date) : null);
             if ($cycle !== null) {
                 $charges[$cycle] = ($charges[$cycle] ?? 0) + CardStatementSummary::signedCents($transaction);
+                if (! $transaction->isConfirmed() && $transaction->installment_number === null) {
+                    $forecast[$cycle] = ($forecast[$cycle] ?? 0) + CardStatementSummary::signedCents($transaction);
+                }
             }
         }
         $historical = DB::table('card_statements')->where('user_id', $card->user_id)->where('card_id', $card->id)
@@ -91,6 +98,7 @@ final class CardOverview
                 'charges_cents' => $c,
                 'paid_cents' => $p,
                 'remaining_cents' => $remaining,
+                'committed_cents' => $isHistorical ? 0 : max(0, $c - ($forecast[$cycle] ?? 0) - $p),
             ];
         }
 

@@ -114,6 +114,28 @@ class CardOverviewTest extends TestCase
         $this->assertSame(52567 - 4242, $data['open']['charges_cents']);
     }
 
+    public function test_subscription_forecast_counts_in_statement_but_not_in_limit(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-15 12:00:00', 'America/Sao_Paulo'));
+        [$user, , $card] = $this->scenario();
+        $forecast = fn (string $date, ?int $installment = null) => Transaction::factory()->create([
+            'user_id' => $user->id, 'account_id' => null, 'card_id' => $card->id, 'type' => 'expense', 'amount' => '107.57',
+            'transaction_date' => $date, 'status' => 'pending', 'is_recurring' => $installment === null, 'installment_number' => $installment,
+        ]);
+        $forecast('2026-11-14');
+        $forecast('2026-12-14');
+
+        $data = $this->actingAs($user, 'sanctum')->getJson("/api/v1/finance/cards/{$card->id}/overview")->json('data');
+
+        $this->assertSame(18325 + 10757, $data['upcoming'][0]['charges_cents']);
+        $this->assertSame(56015 + 52567 + 18325, $data['used_cents']);
+
+        // A pending installment does hold the limit.
+        $forecast('2027-01-07', 4);
+        $data = $this->actingAs($user, 'sanctum')->getJson("/api/v1/finance/cards/{$card->id}/overview")->json('data');
+        $this->assertSame(56015 + 52567 + 18325 + 10757, $data['used_cents']);
+    }
+
     public function test_purchase_without_explicit_cycle_is_placed_by_date(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-10-15 12:00:00', 'America/Sao_Paulo'));
