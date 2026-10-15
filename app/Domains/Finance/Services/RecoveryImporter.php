@@ -8,6 +8,9 @@ use RuntimeException;
 
 final class RecoveryImporter
 {
+    /** Fields the user may change on imported records without affecting cash (ignored by the rollback check). */
+    private const CLASSIFICATION_FIELDS = ['category_id', 'notes', 'classification_status', 'economic_kind', 'economic_income_cents', 'economic_expense_cents', 'updated_at'];
+
     private function isolated(?string $userId = null, ?string $planHash = null): void
     {
         $connection = config('database.connections.'.config('database.default'));
@@ -222,10 +225,25 @@ final class RecoveryImporter
             }
             $this->isolated($userId, $batch->plan_hash);
             $changes = DB::table('import_changes')->where('batch_id', $batchId)->orderByDesc('id')->get();
+            $classified = [];
             foreach ($changes as $change) {
-                if (! in_array($change->target_table, ['transactions', 'bank_accounts'], true) || RecoveryPlan::hash($this->image($change->target_table, $change->target_id) ?? []) !== $change->after_hash) {
+                if (! in_array($change->target_table, ['transactions', 'bank_accounts'], true)) {
                     throw new RuntimeException('Rollback conflict: '.$change->target_id);
                 }
+                $current = $this->image($change->target_table, $change->target_id) ?? [];
+                if (RecoveryPlan::hash($current) === $change->after_hash) {
+                    continue;
+                }
+                // The user may classify imported records (category, notes, nature) without touching cash:
+                // that is not a conflict, and the classification survives the rollback.
+                $after = $change->after === null ? null : json_decode($change->after, true, flags: JSON_THROW_ON_ERROR);
+                $classification = $change->target_table === 'transactions' && $after !== null && $current !== []
+                    ? array_intersect_key($current, array_flip(self::CLASSIFICATION_FIELDS))
+                    : null;
+                if ($classification === null || RecoveryPlan::hash(array_merge($current, array_intersect_key($after, $classification))) !== $change->after_hash) {
+                    throw new RuntimeException('Rollback conflict: '.$change->target_id);
+                }
+                $classified[$change->target_id] = array_diff_key($classification, ['updated_at' => true]);
             }
             if ($dryRun) {
                 return ['dry_run' => true, 'changes' => $changes->count()];
@@ -241,7 +259,7 @@ final class RecoveryImporter
                 if ($before === null) {
                     $query->delete();
                 } else {
-                    $query->update($before);
+                    $query->update(array_merge($before, $classified[$change->target_id] ?? []));
                 }
             }
             // Keep immutable sources and the journal for audit, but deactivate their financial effect through batch state.

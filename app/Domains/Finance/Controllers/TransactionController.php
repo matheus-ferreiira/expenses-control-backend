@@ -10,6 +10,7 @@ use App\Domains\Finance\Requests\UpdateTransactionRequest;
 use App\Domains\Finance\Resources\TransactionResource;
 use App\Domains\Finance\Services\TransactionService;
 use App\Http\Controllers\Controller;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -57,12 +58,17 @@ class TransactionController extends Controller
     public function confirm(Request $request, Transaction $transaction): JsonResponse
     {
         $this->authorize('update', $transaction);
-        $transaction = $this->service->confirm($transaction);
+        // What really happened; both default to the forecast. The action refuses a future date.
+        $validated = $request->validate([
+            'amount' => ['sometimes', 'numeric', 'min:0.01', 'max:9999999999'],
+            'date' => ['sometimes', 'date_format:Y-m-d'],
+        ]);
+        $transaction = $this->service->confirm($transaction, isset($validated['amount']) ? (float) $validated['amount'] : null, $validated['date'] ?? null);
 
         return $this->success(new TransactionResource($transaction), 'Transaction confirmed');
     }
 
-    /** Confirm several pending transactions at once (1-tap weekly review). */
+    /** Confirm several pending transactions at once: only the ones already due, each at its forecast. */
     public function confirmBatch(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -71,22 +77,23 @@ class TransactionController extends Controller
         ]);
 
         // Ownership enforced by the forUser scope — foreign ids are silently ignored.
+        $today = Carbon::now($request->user()->timezone ?: 'America/Sao_Paulo')->toDateString();
         $transactions = Transaction::forUser($request->user()->id)
             ->whereIn('id', $validated['ids'])
             ->get();
+        [$due, $future] = $transactions->partition(fn (Transaction $t) => $t->transaction_date->toDateString() <= $today);
 
-        $confirmed = $transactions->map(fn (Transaction $t) => $this->service->confirm($t));
+        $confirmed = $due->map(fn (Transaction $t) => $this->service->confirm($t))->values();
+        $message = "{$confirmed->count()} transações confirmadas".($future->isNotEmpty() ? " · {$future->count()} ainda não venceram e ficaram pendentes" : '');
 
-        return $this->success(
-            TransactionResource::collection($confirmed),
-            "{$confirmed->count()} transações confirmadas",
-        );
+        return $this->success(TransactionResource::collection($confirmed), $message);
     }
 
     public function destroy(Request $request, Transaction $transaction): JsonResponse
     {
         $this->authorize('delete', $transaction);
-        $this->service->delete($transaction);
+        $validated = $request->validate(['scope' => ['sometimes', 'in:this_only,this_and_future']]);
+        $this->service->delete($transaction, $validated['scope'] ?? 'this_only');
 
         return $this->noContent();
     }

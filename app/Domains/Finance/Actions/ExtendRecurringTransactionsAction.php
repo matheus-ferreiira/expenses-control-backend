@@ -16,8 +16,9 @@ use Illuminate\Support\Facades\DB;
  * - PRUNE: hard-delete far-future pending occurrences beyond the horizon
  *   (legacy data created before the rolling window existed).
  *
- * Occurrence dates are anchored on the FIRST occurrence ever created (including
- * soft-deleted ones), so day-of-month is preserved across short months. A user
+ * New occurrences continue from the LAST occurrence (including soft-deleted ones),
+ * so a day changed with "this and future" sticks; a month-end date clamped from a
+ * longer day (31 → 28/02) keeps the intended day. A user
  * deleting a single occurrence (soft delete) still counts toward count-based
  * series and is never recreated; pruned rows are hard-deleted so they ARE
  * recreated when the window reaches them.
@@ -70,7 +71,8 @@ final class ExtendRecurringTransactionsAction
                 return 0;
             }
 
-            $anchor = $rows->first();
+            // Continue from the LAST occurrence, so a day changed with "this and future" sticks.
+            $last = $rows->last();
             $template = $active->last();
             $config = (array) ($template->recurrence_config ?? []);
             $frequency = $config['frequency'] ?? 'monthly';
@@ -80,16 +82,24 @@ final class ExtendRecurringTransactionsAction
                 ? Carbon::parse($config['end_date'])->endOfDay()
                 : null;
 
-            $anchorDate = $anchor->transaction_date->copy()->startOfDay();
+            $lastDate = $last->transaction_date->copy()->startOfDay();
+            // A month-end date clamped from a longer day (31 → 28/02) keeps the intended day.
+            $day = $lastDate->day;
+            $previous = $rows->count() > 1 ? $rows->get($rows->count() - 2)->transaction_date : null;
+            if ($previous && $lastDate->day === $lastDate->daysInMonth && $previous->day > $day) {
+                $day = $previous->day;
+            }
             $createdSoFar = $rows->count();
             $created = 0;
+            $step = 1;
 
             while (true) {
                 if ($totalTarget !== null && $createdSoFar >= $totalTarget) {
                     break;
                 }
 
-                $nextDate = $this->addInterval($anchorDate->copy(), $frequency, $createdSoFar);
+                $nextDate = $this->nextAfter($lastDate, $frequency, $step, $day);
+                $step++;
 
                 if ($nextDate->greaterThan($horizon)) {
                     break;
@@ -121,6 +131,17 @@ final class ExtendRecurringTransactionsAction
 
             return $created;
         });
+    }
+
+    /** The $step-th occurrence after $last, on $day for month-based frequencies (clamped to short months). */
+    private function nextAfter(Carbon $last, string $frequency, int $step, int $day): Carbon
+    {
+        if (in_array($frequency, ['weekly', 'biweekly'], true)) {
+            return $this->addInterval($last->copy(), $frequency, $step);
+        }
+        $month = $this->addInterval($last->copy()->startOfMonth(), $frequency, $step);
+
+        return $month->setDay(min($day, $month->daysInMonth));
     }
 
     private function addInterval(Carbon $date, string $frequency, int $step): Carbon

@@ -93,8 +93,9 @@ class GoalContributionTest extends TestCase
             ->json('data.0.current_amount');
         $this->assertSame(0.0, (float) $before);
 
+        // Paid ahead of the forecast date: the real date is required (D-07).
         $this->actingAs($user, 'sanctum')
-            ->patchJson("/api/v1/finance/transactions/{$txId}/confirm")
+            ->patchJson("/api/v1/finance/transactions/{$txId}/confirm", ['date' => now()->toDateString()])
             ->assertOk();
 
         $after = $this->actingAs($user, 'sanctum')

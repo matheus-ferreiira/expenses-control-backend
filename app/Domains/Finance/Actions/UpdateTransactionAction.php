@@ -7,6 +7,7 @@ use App\Domains\Finance\Enums\TransactionStatus;
 use App\Domains\Finance\Enums\TransactionType;
 use App\Domains\Finance\Models\BankAccount;
 use App\Domains\Finance\Models\Transaction;
+use App\Domains\Finance\Services\FinancialEffects;
 use App\Domains\Finance\Services\RecoveryRecordGuard;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +28,10 @@ final class UpdateTransactionAction
 
     public function execute(Transaction $transaction, TransactionDTO $dto, string $scope = 'this_only'): Transaction
     {
+        // Imported records keep their cash facts, but can always be classified.
+        if ($transaction->import_batch_id !== null && $this->onlyClassification($transaction, $dto)) {
+            return DB::transaction(fn () => $this->classify($transaction, $dto));
+        }
         RecoveryRecordGuard::editable($transaction, $scope);
 
         return DB::transaction(function () use ($transaction, $dto, $scope) {
@@ -36,6 +41,45 @@ final class UpdateTransactionAction
 
             return $this->executeSingle($transaction, $dto);
         });
+    }
+
+    // ── Classification of imported records (category, tags, notes) ───────────
+
+    /** True when the edit leaves every cash fact (value, date, accounts, card, type, text) untouched. */
+    private function onlyClassification(Transaction $transaction, TransactionDTO $dto): bool
+    {
+        return $dto->type === $transaction->type
+            && FinancialEffects::cents(number_format($dto->amount, 2, '.', '')) === FinancialEffects::cents((string) $transaction->amount)
+            && $dto->transactionDate === $transaction->transaction_date->toDateString()
+            && $dto->description === $transaction->description
+            && $dto->accountId === $transaction->account_id
+            && $dto->cardId === $transaction->card_id
+            && ($dto->type !== TransactionType::Transfer || $dto->destinationAccountId === $transaction->destination_account_id)
+            && $dto->goalId === $transaction->goal_id
+            && $dto->isRecurring === (bool) $transaction->is_recurring;
+    }
+
+    private function classify(Transaction $transaction, TransactionDTO $dto): Transaction
+    {
+        $changes = ['category_id' => $dto->categoryId, 'notes' => $dto->notes];
+        // A record imported as "unknown" that the user files under a category becomes a real income/expense.
+        if ($dto->categoryId && in_array($transaction->economic_kind, [null, 'unknown'], true) && $transaction->type !== TransactionType::Transfer) {
+            $cents = FinancialEffects::cents((string) $transaction->amount);
+            $changes += [
+                'economic_kind' => $transaction->type->value,
+                'classification_status' => 'identified',
+                'economic_income_cents' => $transaction->type === TransactionType::Income ? $cents : 0,
+                'economic_expense_cents' => $transaction->type === TransactionType::Expense ? $cents : 0,
+            ];
+        } elseif ($dto->categoryId && $transaction->classification_status === 'pending_category') {
+            $changes['classification_status'] = 'identified';
+        }
+        $transaction->forceFill($changes)->save();
+        if ($dto->tagIds !== null) {
+            $transaction->tags()->sync($dto->tagIds);
+        }
+
+        return $transaction->load(['category', 'account', 'card', 'tags']);
     }
 
     // ── Single transaction update (default) ──────────────────────────────────
@@ -183,9 +227,16 @@ final class UpdateTransactionAction
             }
         }
 
-        $affected = $query->get();
+        // History is never rewritten: besides the selected occurrence, only unpaid ones change
+        // ("Todas" = every future unpaid occurrence).
+        $affected = $query->get()->filter(fn (Transaction $o) => $o->id === $transaction->id || ! $o->isConfirmed());
         $today = Carbon::today();
         $newBaseDate = Carbon::parse($dto->transactionDate);
+        // Weekly/biweekly series move by the same number of days, keeping their own pattern.
+        $frequency = ($dto->recurrenceConfig ?? $transaction->recurrence_config ?? [])['frequency'] ?? 'monthly';
+        $shiftDays = in_array($frequency, ['weekly', 'biweekly'], true)
+            ? (int) $transaction->transaction_date->copy()->startOfDay()->diffInDays($newBaseDate->copy()->startOfDay(), false)
+            : null;
 
         foreach ($affected as $occurrence) {
             // Reverse the old balance contribution before updating
@@ -198,6 +249,8 @@ final class UpdateTransactionAction
             // Installment occurrences keep their original dates (installment number drives order, not day).
             if ($occurrence->id === $transaction->id) {
                 $newDate = $dto->transactionDate;
+            } elseif (! $transaction->installment_group_id && $shiftDays !== null) {
+                $newDate = $occurrence->transaction_date->copy()->addDays($shiftDays)->toDateString();
             } elseif (! $transaction->installment_group_id) {
                 $occDate = $occurrence->transaction_date->copy();
                 $newDate = $occDate->setDay(min($newBaseDate->day, $occDate->daysInMonth))->toDateString();

@@ -32,4 +32,6 @@ COPY . .
 
 EXPOSE 8000
 
-CMD php artisan optimize && php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}
+# The scheduler runs in this same container (there is no separate cron service); the catch-up at boot
+# recovers anything missed while the container was down.
+CMD php artisan optimize && php artisan migrate --force && (php artisan finance:extend-recurrences; php artisan finance:realize-card-charges; true) && (php artisan schedule:work &) && php artisan serve --host=0.0.0.0 --port=${PORT:-8000}

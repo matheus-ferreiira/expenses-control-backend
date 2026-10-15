@@ -320,13 +320,22 @@ class TransactionsTest extends TestCase
 
         $transactionId = $createResponse->json('data.id');
 
+        // A future forecast cannot be confirmed without the real date (D-07)…
         $this->actingAs($user, 'sanctum')
             ->patchJson("/api/v1/finance/transactions/{$transactionId}/confirm")
-            ->assertOk()
-            ->assertJsonPath('data.status', 'confirmed');
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['date']);
+        $this->assertEqualsWithDelta(1000.00, $account->fresh()->balance, 0.01);
 
-        // Balance now decreased after confirm
-        $this->assertEqualsWithDelta(700.00, $account->fresh()->balance, 0.01);
+        // …paid today instead, for a different amount.
+        $this->actingAs($user, 'sanctum')
+            ->patchJson("/api/v1/finance/transactions/{$transactionId}/confirm", ['date' => now()->toDateString(), 'amount' => 290])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'confirmed')
+            ->assertJsonPath('data.transaction_date', now()->toDateString());
+
+        // Balance now decreased by what was really paid
+        $this->assertEqualsWithDelta(710.00, $account->fresh()->balance, 0.01);
     }
 
     public function test_confirming_already_confirmed_transaction_is_idempotent(): void

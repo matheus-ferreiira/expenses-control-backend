@@ -25,4 +25,5 @@ cmds = [
 ]
 
 [start]
-cmd = "php artisan migrate --force && php artisan serve --host=0.0.0.0 --port=$PORT"
+# The scheduler runs in this same container (no separate cron service); boot catch-up recovers missed days.
+cmd = "php artisan migrate --force && (php artisan finance:extend-recurrences; php artisan finance:realize-card-charges; true) && (php artisan schedule:work &) && php artisan serve --host=0.0.0.0 --port=$PORT"

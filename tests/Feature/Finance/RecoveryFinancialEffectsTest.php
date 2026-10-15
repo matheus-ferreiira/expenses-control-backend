@@ -134,8 +134,11 @@ class RecoveryFinancialEffectsTest extends TestCase
         $future = Transaction::factory()->create(['user_id' => $user->id, 'recurrence_group_id' => $group, 'transaction_date' => today()->addMonth(), 'status' => 'pending']);
         \App\Domains\Finance\Services\RecoveryRecordGuard::editable($future);
         \App\Domains\Finance\Services\RecoveryRecordGuard::editable($future, 'this_and_future');
-        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        // "Todas" only touches unpaid occurrences, so imported history no longer blocks it (D-06)…
         \App\Domains\Finance\Services\RecoveryRecordGuard::editable($future, 'all');
+        // …but the imported occurrence itself keeps its cash facts locked.
+        $this->expectException(\Illuminate\Validation\ValidationException::class);
+        \App\Domains\Finance\Services\RecoveryRecordGuard::editable($past);
     }
 
     public function test_confirming_imported_bank_candidate_cannot_duplicate_source_cash(): void

@@ -107,15 +107,20 @@ final class TransactionService
         return $this->updateTransaction->execute($transaction, $dto, $scope);
     }
 
-    public function confirm(Transaction $transaction): Transaction
+    public function confirm(Transaction $transaction, ?float $amount = null, ?string $date = null): Transaction
     {
-        return $this->confirmTransaction->execute($transaction);
+        return $this->confirmTransaction->execute($transaction, $amount, $date);
     }
 
-    public function delete(Transaction $transaction): void
+    /**
+     * Installments go together (one purchase). A recurring series is deleted by scope:
+     * "this_only" removes the occurrence, "this_and_future" also removes the unpaid ones after it;
+     * paid history is never deleted along with them.
+     */
+    public function delete(Transaction $transaction, string $scope = 'this_only'): void
     {
-        RecoveryRecordGuard::editable($transaction, 'all');
-        DB::transaction(function () use ($transaction) {
+        RecoveryRecordGuard::editable($transaction, $transaction->installment_group_id ? 'all' : $scope);
+        DB::transaction(function () use ($transaction, $scope) {
             if ($transaction->installment_group_id) {
                 // Cascade-delete all installments in the group; reverse balance for confirmed ones
                 /** @var Collection<int, Transaction> $group */
@@ -137,10 +142,12 @@ final class TransactionService
                 return;
             }
 
-            if ($transaction->recurrence_group_id) {
-                // Cascade-delete all occurrences; only reverse balance for confirmed ones
+            if ($transaction->recurrence_group_id && $scope === 'this_and_future') {
+                // This occurrence + the unpaid ones after it; only reverse balance for confirmed ones
                 /** @var Collection<int, Transaction> $group */
-                $group = Transaction::forUser($transaction->user_id)->where('recurrence_group_id', $transaction->recurrence_group_id)->get();
+                $group = Transaction::forUser($transaction->user_id)->where('recurrence_group_id', $transaction->recurrence_group_id)
+                    ->where(fn ($q) => $q->whereKey($transaction->id)->orWhere(fn ($future) => $future->where('status', 'pending')->where('transaction_date', '>=', $transaction->transaction_date->toDateString())))
+                    ->get();
 
                 foreach ($group as $occurrence) {
                     if ($occurrence->isConfirmed() && $occurrence->account_id) {

@@ -5,6 +5,7 @@ namespace App\Domains\Finance\Resources;
 use App\Domains\Finance\Models\Budget;
 use App\Domains\Finance\Models\FinanceGoal;
 use App\Domains\Finance\Models\Transaction;
+use App\Domains\Finance\Services\FinancialEffects;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -23,18 +24,22 @@ class BudgetResource extends JsonResource
         /** @var Budget $budget */
         $budget = $this->resource;
 
+        // "Spent" follows the same economic policy as the reports: a shared bill counts only the
+        // user's own share, reimbursements and unknown/conflicting records count nothing.
         $spentByCategory = [];
         if ($this->startDate && $this->endDate) {
-            $spentByCategory = Transaction::query()
+            $effects = app(FinancialEffects::class);
+            Transaction::query()
                 ->where('user_id', $budget->user_id)
                 ->where('type', 'expense')
                 ->where('status', 'confirmed')
                 ->whereBetween('transaction_date', [$this->startDate, $this->endDate])
                 ->whereNotNull('category_id')
-                ->selectRaw('category_id, SUM(amount) as total')
-                ->groupBy('category_id')
-                ->pluck('total', 'category_id')
-                ->toArray();
+                ->get()
+                ->each(function (Transaction $t) use ($effects, &$spentByCategory) {
+                    $spentByCategory[$t->category_id] = ($spentByCategory[$t->category_id] ?? 0) + $effects->economic($t)['expense'];
+                });
+            $spentByCategory = array_map(fn (int $cents) => $cents / 100, $spentByCategory);
         }
 
         $items = $budget->items->map(function ($item) use ($spentByCategory, $budget) {

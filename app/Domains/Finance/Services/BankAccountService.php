@@ -60,8 +60,11 @@ final class BankAccountService
             $date = Carbon::createFromDate($year, $month, 1)->endOfMonth()->toDateString();
             $balances = $accounts->map(fn ($account) => app(AccountBalanceHistory::class)->at($account, $date));
             $known = $balances->whereNotNull('balance_cents')->sum('balance_cents');
+            // Overdue forecasts are still owed, so they count too (only from today on: past months are history).
             // Scheduled statement payments are covered by the statements themselves (below).
-            $pending = Transaction::forUser($user->id)->pending()->whereNotNull('account_id')->where('transaction_date', '>=', today()->toDateString())->where('transaction_date', '<=', $date)
+            $today = Carbon::now($user->timezone ?: 'America/Sao_Paulo')->toDateString();
+            $pending = $date < $today ? collect() : Transaction::forUser($user->id)->pending()->whereNotNull('account_id')->where('transaction_date', '<=', $date)
+                ->whereRaw("COALESCE(reconciliation_status, '') <> 'conflict'")
                 ->where(fn ($q) => $q->where('type', '!=', TransactionType::Transfer->value)->orWhereNull('card_id'))->get();
             $delta = $pending->sum(fn ($t) => FinancialEffects::cents($t->amount) * ($t->type === TransactionType::Income ? 1 : -1) + ($t->type === TransactionType::Transfer && $t->destination_account_id ? FinancialEffects::cents($t->amount) : 0));
             $cards = $this->cardStatementsDue($user, $date);
@@ -91,15 +94,15 @@ final class BankAccountService
         $historicalBalance = $currentBalance - $incomeAfter + $expenseAfter;
 
         // Card purchases never leave an account directly: they are covered by the card statements below.
-        if ($isFutureMonth) {
-            // For future months: accumulate ALL pending transactions from today through
-            // the end of the target month so that navigating further forward correctly
+        $isCurrentMonth = $year === $today->year && $month === $today->month;
+        if ($isFutureMonth || $isCurrentMonth) {
+            // Current and future months: accumulate ALL pending transactions up to the end of the
+            // target month, overdue ones included (they are still owed), so navigating forward
             // deducts each intermediate month's pending (e.g. July includes June+July pending).
             $pendingIncome = (float) Transaction::forUser($user->id)
                 ->pending()
                 ->where('type', TransactionType::Income)
                 ->whereNull('card_id')
-                ->where('transaction_date', '>=', $today->toDateString())
                 ->where('transaction_date', '<=', $endOfMonth->toDateString())
                 ->sum('amount');
 
@@ -107,11 +110,10 @@ final class BankAccountService
                 ->pending()
                 ->where('type', TransactionType::Expense)
                 ->whereNull('card_id')
-                ->where('transaction_date', '>=', $today->toDateString())
                 ->where('transaction_date', '<=', $endOfMonth->toDateString())
                 ->sum('amount');
         } else {
-            // For current/past months: only count pending within that specific month.
+            // Past months: only count pending within that specific month.
             $pendingIncome = (float) Transaction::forUser($user->id)
                 ->pending()
                 ->where('type', TransactionType::Income)
