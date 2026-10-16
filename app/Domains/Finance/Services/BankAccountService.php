@@ -11,6 +11,8 @@ use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 final class BankAccountService
 {
@@ -23,7 +25,7 @@ final class BankAccountService
 
     public function create(User $user, BankAccountDTO $dto): BankAccount
     {
-        return BankAccount::create([
+        $account = BankAccount::create([
             'user_id' => $user->id,
             'name' => $dto->name,
             'type' => $dto->type,
@@ -33,6 +35,17 @@ final class BankAccountService
             'color' => $dto->color,
             'is_active' => $dto->isActive,
         ]);
+        // Users whose balances are rebuilt from verified openings get one for the new account too,
+        // so it enters the projected balance like the others (D-17).
+        if (DB::table('account_balance_checkpoints')->where('user_id', $user->id)->where('kind', 'opening')->exists()) {
+            DB::table('account_balance_checkpoints')->insert([
+                'id' => (string) Str::uuid(), 'user_id' => $user->id, 'account_id' => $account->id,
+                'observed_on' => UserClock::today($user), 'balance_cents' => FinancialEffects::cents(number_format((float) $dto->balance, 2, '.', '')),
+                'kind' => 'opening', 'evidence' => 'Saldo informado ao criar a conta', 'created_at' => now(), 'updated_at' => now(),
+            ]);
+        }
+
+        return $account;
     }
 
     public function update(BankAccount $account, BankAccountDTO $dto): BankAccount
@@ -48,8 +61,14 @@ final class BankAccountService
         return $account;
     }
 
+    /** An account with history is archived, never deleted: its transactions would lose their account (D-25). */
     public function delete(BankAccount $account): void
     {
+        $used = Transaction::withTrashed()->where(fn ($q) => $q->where('account_id', $account->id)->orWhere('destination_account_id', $account->id))->exists()
+            || DB::table('account_balance_checkpoints')->where('account_id', $account->id)->exists();
+        if ($used) {
+            throw ValidationException::withMessages(['account' => ['Esta conta tem lançamentos. Arquive-a para escondê-la sem perder o histórico.']]);
+        }
         $account->delete();
     }
 
@@ -59,10 +78,13 @@ final class BankAccountService
         if (DB::table('account_balance_checkpoints')->where('user_id', $user->id)->where('kind', 'opening')->exists()) {
             $date = Carbon::createFromDate($year, $month, 1)->endOfMonth()->toDateString();
             $balances = $accounts->map(fn ($account) => app(AccountBalanceHistory::class)->at($account, $date));
-            $known = $balances->whereNotNull('balance_cents')->sum('balance_cents');
+            $today = UserClock::today($user);
+            // Same base as the current balance (D-17): an account without a verified opening (e.g. a wallet)
+            // counts with its recorded balance for today and the future, flagged as unverified.
+            // Past months cannot be rebuilt for it, so there it stays out.
+            $known = $balances->sum(fn ($b) => $b['balance_cents'] ?? ($date >= $today ? FinancialEffects::cents((string) $b['current_recorded_balance']) : 0));
             // Overdue forecasts are still owed, so they count too (only from today on: past months are history).
             // Scheduled statement payments are covered by the statements themselves (below).
-            $today = Carbon::now($user->timezone ?: 'America/Sao_Paulo')->toDateString();
             $pending = $date < $today ? collect() : Transaction::forUser($user->id)->pending()->whereNotNull('account_id')->where('transaction_date', '<=', $date)
                 ->whereRaw("COALESCE(reconciliation_status, '') <> 'conflict'")
                 ->where(fn ($q) => $q->where('type', '!=', TransactionType::Transfer->value)->orWhereNull('card_id'))->get();
@@ -72,7 +94,7 @@ final class BankAccountService
             return ['balance' => $known / 100, 'projected_balance' => ($known + $delta - $cards['cents']) / 100, 'card_due' => $cards['cents'] / 100, 'card_statements' => $cards['items'], 'accounts' => $balances, 'unverified_accounts' => $balances->whereNull('balance_cents')->pluck('account_id')];
         }
         $currentBalance = (float) $accounts->sum('balance');
-        $today = Carbon::today();
+        $today = Carbon::parse(UserClock::today($user));
 
         $endOfMonth = Carbon::createFromDate($year, $month, 1)->endOfMonth();
         $isFutureMonth = ($year > $today->year) || ($year === $today->year && $month > $today->month);
@@ -192,8 +214,12 @@ final class BankAccountService
         return $card;
     }
 
+    /** A card with purchases or payments is archived, never deleted (D-25). */
     public function deleteCreditCard(CreditCard $card): void
     {
+        if (Transaction::withTrashed()->where('card_id', $card->id)->exists()) {
+            throw ValidationException::withMessages(['card' => ['Este cartão tem compras ou pagamentos. Arquive-o para escondê-lo sem perder o histórico.']]);
+        }
         $card->delete();
     }
 }

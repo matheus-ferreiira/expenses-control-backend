@@ -123,6 +123,8 @@ class BudgetController extends Controller
     {
         $this->authorize('delete', $budget);
         $budget->items()->delete();
+        // With no items left, the category limits mirrored from this month's budget are cleared too.
+        $this->syncCategoryLimits->execute($budget);
         $budget->delete();
 
         return $this->noContent();

@@ -72,11 +72,19 @@ class RecoveryFinancialEffectsTest extends TestCase
         $other = User::factory()->create();
         $account = BankAccount::factory()->create(['user_id' => $user->id, 'balance' => 85]);
         $url = '/api/v1/finance/accounts/'.$account->id.'/balance-observations';
-        $payload = ['date' => today()->toDateString(), 'balance' => '80.00', 'evidence' => 'Manual confirmation'];
+        $payload = ['date' => \App\Domains\Finance\Services\UserClock::today($user), 'balance' => '80.00', 'evidence' => 'Manual confirmation'];
         $this->actingAs($other, 'sanctum')->postJson($url, $payload)->assertForbidden();
-        $this->actingAs($user, 'sanctum')->postJson($url, $payload)->assertCreated()->assertJsonPath('data.calculated_cents', null);
+        // First check of an account with no verified opening becomes its opening (D-17/D-42)…
+        $this->actingAs($user, 'sanctum')->postJson($url, $payload)->assertCreated()
+            ->assertJsonPath('data.opening_created', true)->assertJsonPath('data.difference_cents', -500);
         $this->assertSame(0, Transaction::forUser($user->id)->count());
-        $this->assertSame('85.00', $account->fresh()->balance);
+        $this->assertSame('80.00', $account->fresh()->balance);
+        // …the next one is compared with the balance the app calculates, and both show in the history.
+        $this->actingAs($user, 'sanctum')->postJson($url, [...$payload, 'balance' => '79.50'])->assertCreated()
+            ->assertJsonPath('data.calculated_cents', 8000)->assertJsonPath('data.difference_cents', -50);
+        $this->actingAs($user, 'sanctum')->getJson($url)->assertOk()->assertJsonCount(2, 'data');
+        $this->actingAs($other, 'sanctum')->getJson($url)->assertForbidden();
+        $this->assertSame(0, Transaction::forUser($user->id)->count());
     }
 
     public function test_statement_cycle_overrides_csv_date_and_partial_payment_leaves_residual(): void

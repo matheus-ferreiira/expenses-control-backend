@@ -61,7 +61,6 @@ Route::prefix('v1')->group(function () {
             Route::patch('profile', [AuthController::class, 'updateProfile']);
             Route::patch('password', [AuthController::class, 'updatePassword']);
             Route::patch('settings', [AuthController::class, 'updateSettings']);
-            Route::delete('reset-data', [AuthController::class, 'resetData']);
         });
 
         // Dashboard
@@ -119,6 +118,7 @@ Route::prefix('v1')->group(function () {
             Route::apiResource('accounts', BankAccountController::class);
             Route::get('accounts/{account}/balance-at', [BankAccountController::class, 'balanceAt']);
             Route::post('accounts/{account}/balance-observations', [BankAccountController::class, 'observeBalance']);
+            Route::get('accounts/{account}/balance-observations', [BankAccountController::class, 'balanceObservations']);
 
             // Credit Cards (nested under accounts)
             Route::post('accounts/{bankAccount}/cards', [CreditCardController::class, 'store']);
@@ -157,6 +157,8 @@ Route::prefix('v1')->group(function () {
                 Route::get('monthly', [FinanceReportController::class, 'monthlySummary']);
                 Route::get('yearly', [FinanceReportController::class, 'yearlySummary']);
                 Route::get('cashflow', [FinanceReportController::class, 'cashFlow']);
+                Route::get('series', [FinanceReportController::class, 'series']);
+                Route::get('categories', [FinanceReportController::class, 'categoryTotals']);
                 Route::get('balance', [FinanceReportController::class, 'consolidatedBalance']);
             });
 

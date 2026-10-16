@@ -26,6 +26,8 @@ final readonly class TransactionDTO
         public ?string $goalId = null,
         /** Credit card statement being settled ("YYYY-MM"), for statement-payment transfers. */
         public ?string $statementMonth = null,
+        /** Income that gives back money already spent (e.g. a friend paying their share): not income. Null = unchanged. */
+        public ?bool $isReimbursement = null,
     ) {}
 
     public static function fromArray(array $data): self
@@ -46,6 +48,7 @@ final readonly class TransactionDTO
             destinationAccountId: $data['destination_account_id'] ?? null,
             goalId: $data['goal_id'] ?? null,
             statementMonth: $data['statement_month'] ?? null,
+            isReimbursement: array_key_exists('is_reimbursement', $data) ? (bool) $data['is_reimbursement'] : null,
         );
     }
 }

@@ -23,6 +23,22 @@ final class FinancialEffects
         return ($cents < 0 ? '-' : '').intdiv(abs($cents), 100).'.'.str_pad((string) (abs($cents) % 100), 2, '0', STR_PAD_LEFT);
     }
 
+    /**
+     * Economic fields for an income marked (or unmarked) as a reimbursement: it gives back money
+     * already spent, so it is not income. Unmarking falls back to the plain amount.
+     */
+    public static function reimbursementFields(Transaction $transaction, bool $isReimbursement): array
+    {
+        if ($isReimbursement && $transaction->type === TransactionType::Income) {
+            return ['economic_kind' => 'reimbursement', 'classification_status' => 'identified', 'economic_income_cents' => 0, 'economic_expense_cents' => 0];
+        }
+        if (! $isReimbursement && $transaction->economic_kind === 'reimbursement') {
+            return ['economic_kind' => null, 'economic_income_cents' => null, 'economic_expense_cents' => null];
+        }
+
+        return [];
+    }
+
     public function economic(Transaction $transaction): array
     {
         if ($transaction->reconciliation_status === 'conflict' || $transaction->goal_id) {

@@ -158,7 +158,7 @@ class CardStatementTest extends TestCase
             ->assertUnprocessable();
     }
 
-    public function test_statement_payment_lookup_returns_payment_or_null(): void
+    public function test_statement_payment_lookup_returns_every_payment(): void
     {
         $user = User::factory()->create();
         $card = $this->makeCard($user);
@@ -168,7 +168,7 @@ class CardStatementTest extends TestCase
         $empty = $this->actingAs($user, 'sanctum')
             ->getJson("/api/v1/finance/cards/{$card->id}/statement-payment?statement_month={$month}")
             ->assertOk();
-        $this->assertNull($empty->json('data'));
+        $this->assertSame([], $empty->json('data'));
 
         $this->actingAs($user, 'sanctum')
             ->postJson("/api/v1/finance/cards/{$card->id}/pay-statement", [
@@ -181,7 +181,8 @@ class CardStatementTest extends TestCase
         $paid = $this->actingAs($user, 'sanctum')
             ->getJson("/api/v1/finance/cards/{$card->id}/statement-payment?statement_month={$month}")
             ->assertOk();
-        $this->assertSame(750.0, (float) $paid->json('data.amount'));
+        $this->assertCount(1, $paid->json('data'));
+        $this->assertSame(750.0, (float) $paid->json('data.0.amount'));
     }
 
     public function test_user_cannot_pay_statement_of_another_users_card(): void

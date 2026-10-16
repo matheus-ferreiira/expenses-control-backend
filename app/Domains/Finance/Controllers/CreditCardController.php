@@ -96,20 +96,21 @@ class CreditCardController extends Controller
         return $this->created(new TransactionResource($transaction), 'Payment recorded');
     }
 
-    /** Payment (if any) that settled the given statement month of this card. */
+    /** Every payment made to the given statement month of this card (a statement can be paid in parts, D-41). */
     public function statementPayment(Request $request, CreditCard $creditCard): JsonResponse
     {
         $this->authorize('view', $creditCard);
         $request->validate(['statement_month' => ['required', 'date_format:Y-m']]);
 
-        $payment = Transaction::query()
+        $payments = Transaction::forUser($request->user()->id)
             ->where('card_id', $creditCard->id)
             ->where('statement_month', $request->query('statement_month'))
             ->where('type', TransactionType::Transfer->value)
             ->with('account')
-            ->first();
+            ->orderBy('transaction_date')
+            ->get();
 
-        return $this->success($payment ? new TransactionResource($payment) : null);
+        return $this->success(TransactionResource::collection($payments));
     }
 
     /** Statements to pay, open statement, future commitments and real available limit. */

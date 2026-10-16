@@ -8,6 +8,7 @@ use App\Domains\Finance\Models\BankAccount;
 use App\Domains\Finance\Models\CreditCard;
 use App\Domains\Finance\Models\Transaction;
 use App\Domains\Finance\Services\FinancialEffects;
+use App\Domains\Finance\Services\UserClock;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -29,7 +30,7 @@ final class PayCardStatementAction
         return DB::transaction(function () use ($user, $card, $accountId, $amount, $statementMonth, $paymentDate, $paymentReference) {
             CreditCard::forUser($user->id)->whereKey($card->id)->lockForUpdate()->firstOrFail();
             BankAccount::forUser($user->id)->whereKey($accountId)->lockForUpdate()->firstOrFail();
-            $date = $paymentDate ?? Carbon::today()->toDateString();
+            $date = $paymentDate ?? UserClock::today($user);
             $reference = $paymentReference ?? hash('sha256', implode('|', [$card->id, $accountId, number_format($amount, 2, '.', ''), $statementMonth, $date]));
             $existing = Transaction::withTrashed()->forUser($user->id)->where('payment_reference', $reference)->first();
             if ($existing) {
@@ -48,7 +49,7 @@ final class PayCardStatementAction
                 type: TransactionType::Transfer,
                 amount: $amount,
                 description: "Fatura {$card->name} · {$monthLabel}",
-                transactionDate: $paymentDate ?? Carbon::today()->toDateString(),
+                transactionDate: $paymentDate ?? UserClock::today($user),
                 accountId: $accountId,
                 cardId: $card->id,
                 statementMonth: $statementMonth,

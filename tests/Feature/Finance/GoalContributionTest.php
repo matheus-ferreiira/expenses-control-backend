@@ -124,7 +124,7 @@ class GoalContributionTest extends TestCase
             ->assertUnprocessable();
     }
 
-    public function test_account_linked_goal_uses_account_balance_as_progress(): void
+    public function test_account_linked_goal_progress_is_the_contributions_not_the_account_balance(): void
     {
         $user = User::factory()->create();
         $reserveAccount = $this->makeAccount($user, 1623.21);
@@ -134,7 +134,7 @@ class GoalContributionTest extends TestCase
             'bank_account_id' => $reserveAccount->id,
         ]);
 
-        // A confirmed goal_id transaction must NOT double-count for account-linked goals
+        // The linked account may be an everyday account: only contributions are money put aside (D-16)
         Transaction::factory()->create([
             'user_id' => $user->id,
             'goal_id' => $goal->id,
@@ -147,6 +147,6 @@ class GoalContributionTest extends TestCase
             ->assertOk()
             ->json('data.0.current_amount');
 
-        $this->assertSame(1623.21, (float) $current);
+        $this->assertSame(999.0, (float) $current);
     }
 }

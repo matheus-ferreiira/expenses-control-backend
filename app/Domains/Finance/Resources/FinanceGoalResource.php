@@ -16,16 +16,11 @@ class FinanceGoalResource extends JsonResource
         $targetAmount = (float) $goal->target_amount;
         $monthlyContribution = (float) $goal->monthly_contribution;
 
-        // Current amount: bank account balance if linked, else sum of confirmed
-        // transactions of ANY type linked via goal_id — an aporte is usually an
-        // expense/transfer leaving the checking account, not an income.
-        if ($goal->bank_account_id && $goal->bankAccount) {
-            $currentAmount = (float) $goal->bankAccount->balance;
-        } else {
-            $currentAmount = (float) $goal->transactions()
-                ->where('status', 'confirmed')
-                ->sum('amount');
-        }
+        // Progress is the money actually put aside: confirmed contributions linked to the goal.
+        // The linked account balance is NOT used — it may be an everyday account (D-16).
+        $currentAmount = round((float) $goal->transactions()
+            ->where('status', 'confirmed')
+            ->sum('amount'), 2);
 
         $progressPct = $targetAmount > 0
             ? min(100, round(($currentAmount / $targetAmount) * 100, 2))
@@ -44,10 +39,8 @@ class FinanceGoalResource extends JsonResource
         // On-track calculation
         $onTrack = null;
         if ($monthlyContribution > 0) {
-            $monthsElapsed = (int) now()->startOfMonth()->diffInMonths(
-                $goal->created_at->startOfMonth(),
-                false,
-            );
+            // Whole months since the goal was created (it used to be negative, so always "on track", D-15)
+            $monthsElapsed = max(0, (int) $goal->created_at->copy()->startOfMonth()->diffInMonths(now()->startOfMonth(), false));
             $expectedAmount = $monthsElapsed * $monthlyContribution;
             $onTrack = $currentAmount >= $expectedAmount;
         }

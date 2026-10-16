@@ -6,6 +6,7 @@ use App\Domains\Finance\Enums\TransactionStatus;
 use App\Domains\Finance\Enums\TransactionType;
 use App\Domains\Finance\Models\Transaction;
 use App\Models\User;
+use Carbon\Carbon;
 
 final class FinanceReportService
 {
@@ -14,6 +15,76 @@ final class FinanceReportService
         $effects = app(FinancialEffects::class);
 
         return $transactions->sum(fn ($transaction) => $effects->economic($transaction)[$kind]) / 100;
+    }
+
+    /**
+     * The month's largest confirmed spending, by its economic effect (the user's own share),
+     * computed over the whole month — not over the page loaded in the browser (D-14).
+     */
+    private function largestExpense($confirmed): ?array
+    {
+        $effects = app(FinancialEffects::class);
+        $largest = $confirmed->sortByDesc(fn ($t) => $effects->economic($t)['expense'])->first();
+        if (! $largest || $effects->economic($largest)['expense'] === 0) {
+            return null;
+        }
+
+        return [
+            'id' => $largest->id,
+            'description' => $largest->description,
+            'amount' => $effects->economic($largest)['expense'] / 100,
+            'transaction_date' => $largest->transaction_date->toDateString(),
+            'category' => $largest->category?->name,
+        ];
+    }
+
+    /**
+     * Income and expenses per day or per month between two dates, with the same economic policy as the
+     * monthly report (own share of shared bills, reimbursements and transfers out). Feeds the "Hoje" chart,
+     * which used to add raw amounts of up to 500 transactions in the browser (D-11).
+     *
+     * @return list<array{period: string, income: float, expenses: float}>
+     */
+    public function getSeries(User $user, string $start, string $end, string $group): array
+    {
+        $format = $group === 'month' ? 'Y-m' : 'Y-m-d';
+        $series = [];
+        for ($d = Carbon::parse($start); $d->lte(Carbon::parse($end)); $group === 'month' ? $d->addMonthNoOverflow() : $d->addDay()) {
+            $series[$d->format($format)] = ['income' => 0, 'expenses' => 0];
+        }
+        $effects = app(FinancialEffects::class);
+        foreach (Transaction::forUser($user->id)->confirmed()->whereBetween('transaction_date', [$start, $end])->get() as $t) {
+            $key = $t->transaction_date->format($format);
+            if (! isset($series[$key])) {
+                continue;
+            }
+            $effect = $effects->economic($t);
+            $series[$key]['income'] += $effect['income'];
+            $series[$key]['expenses'] += $effect['expense'];
+        }
+
+        return array_map(fn ($period, $v) => ['period' => $period, 'income' => $v['income'] / 100, 'expenses' => $v['expenses'] / 100], array_keys($series), $series);
+    }
+
+    /**
+     * Spending per category between two dates (economic, confirmed only), largest first.
+     *
+     * @return list<array{category_id: ?string, category: string, color: string, total: float}>
+     */
+    public function getCategoryTotals(User $user, string $start, string $end): array
+    {
+        $effects = app(FinancialEffects::class);
+
+        return Transaction::forUser($user->id)->confirmed()->where('type', TransactionType::Expense)->whereBetween('transaction_date', [$start, $end])->with('category')->get()
+            ->groupBy('category_id')
+            ->map(fn ($group) => [
+                'category_id' => $group->first()->category_id,
+                'category' => $group->first()->category?->name ?? 'Sem categoria',
+                'color' => $group->first()->category?->color ?? '#888',
+                'total' => $group->sum(fn ($t) => $effects->economic($t)['expense']) / 100,
+            ])
+            ->filter(fn ($row) => $row['total'] > 0)
+            ->sortByDesc('total')->values()->all();
     }
 
     public function getMonthlySummary(User $user, int $year, int $month): array
@@ -42,6 +113,7 @@ final class FinanceReportService
                 $first = $group->first();
 
                 return [
+                    'category_id' => $first->category_id,
                     'category' => $first->category?->name ?? 'Sem categoria',
                     'color' => $first->category?->color ?? '#888',
                     'total' => $this->total($group, 'expense'),
@@ -64,11 +136,13 @@ final class FinanceReportService
             'month' => $month,
             'income' => (float) $income,
             'expenses' => (float) $expenses,
-            'saved' => (float) $saved,
-            'balance' => (float) ($income - $expenses - $saved),
+            'saved' => round((float) $saved, 2),
+            // Rounded at the API boundary: float subtraction used to leak values like -1557.3000000000002 (D-31)
+            'balance' => round($income - $expenses - (float) $saved, 2),
             'pending_income' => (float) $pendingIncome,
             'pending_expenses' => (float) $pendingExpenses,
-            'pending_saved' => (float) $pendingSaved,
+            'pending_saved' => round((float) $pendingSaved, 2),
+            'largest_expense' => $this->largestExpense($confirmed),
             'transactions_count' => $transactions->count(),
             'expenses_by_category' => $expensesByCategory,
         ];
@@ -87,13 +161,13 @@ final class FinanceReportService
             $pendingData = $data->where('status', TransactionStatus::Pending);
             $income = $this->total($confirmedData, 'income');
             $expenses = $this->total($confirmedData, 'expense');
-            $saved = (float) $confirmedData->where('type', TransactionType::Expense)->whereNotNull('goal_id')->sum('amount');
+            $saved = round((float) $confirmedData->where('type', TransactionType::Expense)->whereNotNull('goal_id')->sum('amount'), 2);
             $months[$m] = [
                 'month' => $m,
                 'income' => $income,
                 'expenses' => $expenses,
                 'saved' => $saved,
-                'balance' => $income - $expenses - $saved,
+                'balance' => round($income - $expenses - $saved, 2),
                 'pending_income' => $this->total($pendingData, 'income'),
                 'pending_expenses' => $this->total($pendingData, 'expense'),
             ];

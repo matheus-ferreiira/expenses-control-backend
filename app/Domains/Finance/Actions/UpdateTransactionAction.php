@@ -9,23 +9,14 @@ use App\Domains\Finance\Models\BankAccount;
 use App\Domains\Finance\Models\Transaction;
 use App\Domains\Finance\Services\FinancialEffects;
 use App\Domains\Finance\Services\RecoveryRecordGuard;
+use App\Domains\Finance\Services\RecurrenceSchedule;
+use App\Domains\Finance\Services\UserClock;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 final class UpdateTransactionAction
 {
-    /** Max occurrences when promoting a transaction to a fix series, keyed by frequency. */
-    private const MAX_BY_FREQUENCY = [
-        'weekly' => 260,
-        'biweekly' => 130,
-        'monthly' => 60,
-        'bimonthly' => 30,
-        'quarterly' => 20,
-        'semiannual' => 10,
-        'annual' => 5,
-    ];
-
     public function execute(Transaction $transaction, TransactionDTO $dto, string $scope = 'this_only'): Transaction
     {
         // Imported records keep their cash facts, but can always be classified.
@@ -74,6 +65,9 @@ final class UpdateTransactionAction
         } elseif ($dto->categoryId && $transaction->classification_status === 'pending_category') {
             $changes['classification_status'] = 'identified';
         }
+        if ($dto->isReimbursement !== null) {
+            $changes = array_merge($changes, FinancialEffects::reimbursementFields($transaction, $dto->isReimbursement));
+        }
         $transaction->forceFill($changes)->save();
         if ($dto->tagIds !== null) {
             $transaction->tags()->sync($dto->tagIds);
@@ -113,6 +107,9 @@ final class UpdateTransactionAction
         if ($dto->tagIds !== null) {
             $transaction->tags()->sync($dto->tagIds);
         }
+        if ($dto->isReimbursement !== null && $fields = FinancialEffects::reimbursementFields($transaction, $dto->isReimbursement)) {
+            $transaction->forceFill($fields)->save();
+        }
 
         $this->applyAccountBalance($transaction);
 
@@ -135,11 +132,11 @@ final class UpdateTransactionAction
         $config = $dto->recurrenceConfig ?? [];
         $frequency = $config['frequency'] ?? 'monthly';
         $endType = $config['end_type'] ?? 'never';
-        $maxCount = self::MAX_BY_FREQUENCY[$frequency] ?? 60;
+        $maxCount = RecurrenceSchedule::MAX_BY_FREQUENCY[$frequency] ?? 60;
 
         $total = match ($endType) {
             'count' => min((int) ($config['count'] ?? $maxCount), $maxCount),
-            'date' => $this->countUntilDate($baseDate, $frequency, $config['end_date'] ?? null, $maxCount),
+            'date' => RecurrenceSchedule::countUntilDate($baseDate, $frequency, $config['end_date'] ?? null, $maxCount),
             default => $maxCount,
         };
 
@@ -147,16 +144,17 @@ final class UpdateTransactionAction
 
         // Start at i=1 — i=0 is the promoted transaction already saved
         for ($i = 1; $i < $total; $i++) {
-            $occurrenceDate = $this->addInterval($baseDate->copy(), $frequency, $i);
+            $occurrenceDate = RecurrenceSchedule::addInterval($baseDate->copy(), $frequency, $i);
 
             // Rolling window — see CreateTransactionAction::HORIZON_MONTHS
             if ($occurrenceDate->greaterThan($horizon)) {
                 break;
             }
 
-            Transaction::create([
+            $occurrence = Transaction::create([
                 'user_id' => $transaction->user_id,
                 'account_id' => $dto->accountId,
+                'destination_account_id' => $dto->destinationAccountId,
                 'card_id' => $dto->cardId,
                 'category_id' => $dto->categoryId,
                 'goal_id' => $dto->goalId,
@@ -170,39 +168,10 @@ final class UpdateTransactionAction
                 'recurrence_group_id' => $groupId,
                 'status' => TransactionStatus::Pending->value,
             ]);
-        }
-    }
-
-    private function addInterval(Carbon $date, string $frequency, int $step): Carbon
-    {
-        return match ($frequency) {
-            'weekly' => $date->addWeeks($step),
-            'biweekly' => $date->addWeeks($step * 2),
-            'bimonthly' => $date->addMonthsNoOverflow($step * 2),
-            'quarterly' => $date->addMonthsNoOverflow($step * 3),
-            'semiannual' => $date->addMonthsNoOverflow($step * 6),
-            'annual' => $date->addYearsNoOverflow($step),
-            default => $date->addMonthsNoOverflow($step),
-        };
-    }
-
-    private function countUntilDate(Carbon $baseDate, string $frequency, ?string $endDateStr, int $max): int
-    {
-        if (! $endDateStr) {
-            return $max;
-        }
-
-        $endDate = Carbon::parse($endDateStr)->endOfDay();
-        $count = 0;
-
-        for ($i = 0; $i < $max; $i++) {
-            if ($this->addInterval($baseDate->copy(), $frequency, $i)->greaterThan($endDate)) {
-                break;
+            if ($dto->tagIds) {
+                $occurrence->tags()->sync($dto->tagIds);
             }
-            $count++;
         }
-
-        return max(1, $count);
     }
 
     // ── Bulk update (this_and_future | all) ───────────────────────────────────
@@ -230,7 +199,7 @@ final class UpdateTransactionAction
         // History is never rewritten: besides the selected occurrence, only unpaid ones change
         // ("Todas" = every future unpaid occurrence).
         $affected = $query->get()->filter(fn (Transaction $o) => $o->id === $transaction->id || ! $o->isConfirmed());
-        $today = Carbon::today();
+        $today = Carbon::parse(UserClock::today($transaction->user_id));
         $newBaseDate = Carbon::parse($dto->transactionDate);
         // Weekly/biweekly series move by the same number of days, keeping their own pattern.
         $frequency = ($dto->recurrenceConfig ?? $transaction->recurrence_config ?? [])['frequency'] ?? 'monthly';

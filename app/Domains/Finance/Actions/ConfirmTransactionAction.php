@@ -8,8 +8,7 @@ use App\Domains\Finance\Models\BankAccount;
 use App\Domains\Finance\Models\Transaction;
 use App\Domains\Finance\Services\FinancialEffects;
 use App\Domains\Finance\Services\RecoveryRecordGuard;
-use App\Models\User;
-use Carbon\Carbon;
+use App\Domains\Finance\Services\UserClock;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -69,6 +68,6 @@ final class ConfirmTransactionAction
     /** "Today" in the owner's timezone (the server runs in UTC). */
     public static function today(Transaction $transaction): string
     {
-        return Carbon::now(User::find($transaction->user_id)?->timezone ?: 'America/Sao_Paulo')->toDateString();
+        return UserClock::today($transaction->user_id);
     }
 }

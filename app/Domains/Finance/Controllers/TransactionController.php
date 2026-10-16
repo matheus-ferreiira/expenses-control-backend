@@ -9,8 +9,8 @@ use App\Domains\Finance\Requests\TransactionFilterRequest;
 use App\Domains\Finance\Requests\UpdateTransactionRequest;
 use App\Domains\Finance\Resources\TransactionResource;
 use App\Domains\Finance\Services\TransactionService;
+use App\Domains\Finance\Services\UserClock;
 use App\Http\Controllers\Controller;
-use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -77,7 +77,7 @@ class TransactionController extends Controller
         ]);
 
         // Ownership enforced by the forUser scope — foreign ids are silently ignored.
-        $today = Carbon::now($request->user()->timezone ?: 'America/Sao_Paulo')->toDateString();
+        $today = UserClock::today($request->user());
         $transactions = Transaction::forUser($request->user()->id)
             ->whereIn('id', $validated['ids'])
             ->get();

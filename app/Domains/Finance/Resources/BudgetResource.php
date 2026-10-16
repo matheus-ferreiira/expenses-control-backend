@@ -27,6 +27,7 @@ class BudgetResource extends JsonResource
         // "Spent" follows the same economic policy as the reports: a shared bill counts only the
         // user's own share, reimbursements and unknown/conflicting records count nothing.
         $spentByCategory = [];
+        $uncategorizedCents = 0;
         if ($this->startDate && $this->endDate) {
             $effects = app(FinancialEffects::class);
             Transaction::query()
@@ -34,23 +35,31 @@ class BudgetResource extends JsonResource
                 ->where('type', 'expense')
                 ->where('status', 'confirmed')
                 ->whereBetween('transaction_date', [$this->startDate, $this->endDate])
-                ->whereNotNull('category_id')
                 ->get()
-                ->each(function (Transaction $t) use ($effects, &$spentByCategory) {
+                ->each(function (Transaction $t) use ($effects, &$spentByCategory, &$uncategorizedCents) {
+                    if ($t->category_id === null) {
+                        $uncategorizedCents += $effects->economic($t)['expense'];
+
+                        return;
+                    }
                     $spentByCategory[$t->category_id] = ($spentByCategory[$t->category_id] ?? 0) + $effects->economic($t)['expense'];
                 });
             $spentByCategory = array_map(fn (int $cents) => $cents / 100, $spentByCategory);
         }
 
-        $items = $budget->items->map(function ($item) use ($spentByCategory, $budget) {
+        $items = $budget->items->map(function ($item) use ($spentByCategory) {
             $spent = (float) ($spentByCategory[$item->category_id] ?? 0);
             $amount = (float) $item->amount;
             $spentPct = $amount > 0 ? round(($spent / $amount) * 100, 2) : 0;
-            $remaining = max(0, $amount - $spent);
+            $remaining = round(max(0, $amount - $spent), 2);
 
+            // A fixed bill paid exactly at the budgeted value is on target, not exceeded (D-36).
             $status = 'on_track';
-            if ($spentPct >= 100) $status = 'exceeded';
-            elseif ($spentPct >= 70) $status = 'warning';
+            if (round($spent * 100) > round($amount * 100)) {
+                $status = 'exceeded';
+            } elseif ($spentPct >= 70 && $spentPct < 100) {
+                $status = 'warning';
+            }
 
             return [
                 'id' => $item->id,
@@ -78,6 +87,7 @@ class BudgetResource extends JsonResource
         $goalsItems = $goals->map(function ($goal) use ($baseAmount) {
             $amount = (float) $goal->monthly_contribution;
             $pct = $baseAmount > 0 ? round(($amount / $baseAmount) * 100, 2) : 0;
+
             return [
                 'id' => $goal->id,
                 'name' => $goal->name,
@@ -92,8 +102,11 @@ class BudgetResource extends JsonResource
         $totalFromCategories = $items->sum('amount');
         $totalFromGoals = $goals->sum('monthly_contribution');
         $totalBudgeted = $totalFromCategories + (float) $totalFromGoals;
-        $totalSpent = $items->sum('spent');
-        $freeAmount = $baseAmount - $totalBudgeted;
+        $totalSpent = round($items->sum('spent'), 2);
+        // Spending the budget does not cover is shown too, instead of disappearing (D-36).
+        $budgeted = $budget->items->pluck('category_id')->flip();
+        $unbudgeted = collect($spentByCategory)->reject(fn ($v, $categoryId) => $budgeted->has($categoryId))->sum();
+        $freeAmount = round($baseAmount - $totalBudgeted, 2);
         $budgetedPct = $baseAmount > 0 ? round(($totalBudgeted / $baseAmount) * 100, 2) : 0;
         $freePct = $baseAmount > 0 ? round(($freeAmount / $baseAmount) * 100, 2) : 0;
         $categoriesPct = $baseAmount > 0 ? round(($totalFromCategories / $baseAmount) * 100, 2) : 0;
@@ -112,6 +125,8 @@ class BudgetResource extends JsonResource
                 'total_budgeted' => $totalBudgeted,
                 'total_budgeted_percentage' => $budgetedPct,
                 'total_spent' => $totalSpent,
+                'unbudgeted_spent' => round($unbudgeted, 2),
+                'uncategorized_spent' => round($uncategorizedCents / 100, 2),
                 'free_amount' => $freeAmount,
                 'free_percentage' => $freePct,
                 'categories_percentage' => $categoriesPct,

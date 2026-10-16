@@ -1,0 +1,6 @@
+# Migrations approved to run on the next deploy (one name per line, without ".php").
+# The deploy runs `php artisan app:release-migrate`, which only applies pending migrations listed here.
+# Release procedure for a migration:
+#   1. Take a full production backup and verify it restores.
+#   2. Add the migration name below in the same commit as the migration.
+#   3. Push; after the deploy, confirm the migration ran and clear this list in the next release.

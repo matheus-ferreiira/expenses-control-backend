@@ -8,13 +8,12 @@ use App\Domains\Finance\Requests\StoreBankAccountRequest;
 use App\Domains\Finance\Requests\UpdateBankAccountRequest;
 use App\Domains\Finance\Resources\BankAccountResource;
 use App\Domains\Finance\Services\AccountBalanceHistory;
+use App\Domains\Finance\Services\BalanceObservationService;
 use App\Domains\Finance\Services\BankAccountService;
-use App\Domains\Finance\Services\FinancialEffects;
+use App\Domains\Finance\Services\UserClock;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class BankAccountController extends Controller
 {
@@ -95,11 +94,16 @@ class BankAccountController extends Controller
     public function observeBalance(Request $request, BankAccount $account): JsonResponse
     {
         $this->authorize('update', $account);
-        $data = $request->validate(['date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'], 'balance' => ['required', 'regex:/^-?\d{1,13}(\.\d{1,2})?$/'], 'evidence' => ['required', 'string', 'max:1000']]);
-        $history = app(AccountBalanceHistory::class)->at($account, $data['date']);
-        $cents = FinancialEffects::cents((string) $data['balance']);
-        DB::table('account_balance_checkpoints')->insert(['id' => (string) Str::uuid(), 'user_id' => $request->user()->id, 'account_id' => $account->id, 'observed_on' => $data['date'], 'balance_cents' => $cents, 'kind' => 'observation', 'evidence' => $data['evidence'], 'created_at' => now(), 'updated_at' => now()]);
+        $data = $request->validate(['date' => ['required', 'date_format:Y-m-d', 'before_or_equal:'.UserClock::today($request->user())], 'balance' => ['required', 'regex:/^-?\d{1,13}(\.\d{1,2})?$/'], 'evidence' => ['required', 'string', 'max:1000']]);
 
-        return $this->created(['observed_cents' => $cents, 'calculated_cents' => $history['balance_cents'], 'difference_cents' => $history['balance_cents'] === null ? null : $cents - $history['balance_cents']], 'Balance observation recorded');
+        return $this->created(app(BalanceObservationService::class)->observe($account, $data['date'], (string) $data['balance'], $data['evidence']), 'Balance observation recorded');
+    }
+
+    /** Balance checks of the account, newest first (D-42). */
+    public function balanceObservations(BankAccount $account): JsonResponse
+    {
+        $this->authorize('view', $account);
+
+        return $this->success(app(BalanceObservationService::class)->history($account));
     }
 }

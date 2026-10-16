@@ -4,6 +4,7 @@ namespace App\Domains\Finance\Actions;
 
 use App\Domains\Finance\Enums\TransactionStatus;
 use App\Domains\Finance\Models\Transaction;
+use App\Domains\Finance\Services\RecurrenceSchedule;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -108,9 +109,10 @@ final class ExtendRecurringTransactionsAction
                     break;
                 }
 
-                Transaction::create([
+                $occurrence = Transaction::create([
                     'user_id' => $template->user_id,
                     'account_id' => $template->account_id,
+                    'destination_account_id' => $template->destination_account_id,
                     'card_id' => $template->card_id,
                     'category_id' => $template->category_id,
                     'goal_id' => $template->goal_id,
@@ -124,6 +126,9 @@ final class ExtendRecurringTransactionsAction
                     'recurrence_group_id' => $groupId,
                     'status' => TransactionStatus::Pending->value,
                 ]);
+                if ($tagIds = $template->tags()->pluck('transaction_tags.id')->all()) {
+                    $occurrence->tags()->sync($tagIds);
+                }
 
                 $createdSoFar++;
                 $created++;
@@ -137,23 +142,10 @@ final class ExtendRecurringTransactionsAction
     private function nextAfter(Carbon $last, string $frequency, int $step, int $day): Carbon
     {
         if (in_array($frequency, ['weekly', 'biweekly'], true)) {
-            return $this->addInterval($last->copy(), $frequency, $step);
+            return RecurrenceSchedule::addInterval($last->copy(), $frequency, $step);
         }
-        $month = $this->addInterval($last->copy()->startOfMonth(), $frequency, $step);
+        $month = RecurrenceSchedule::addInterval($last->copy()->startOfMonth(), $frequency, $step);
 
         return $month->setDay(min($day, $month->daysInMonth));
-    }
-
-    private function addInterval(Carbon $date, string $frequency, int $step): Carbon
-    {
-        return match ($frequency) {
-            'weekly' => $date->addWeeks($step),
-            'biweekly' => $date->addWeeks($step * 2),
-            'bimonthly' => $date->addMonthsNoOverflow($step * 2),
-            'quarterly' => $date->addMonthsNoOverflow($step * 3),
-            'semiannual' => $date->addMonthsNoOverflow($step * 6),
-            'annual' => $date->addYearsNoOverflow($step),
-            default => $date->addMonthsNoOverflow($step),
-        };
     }
 }

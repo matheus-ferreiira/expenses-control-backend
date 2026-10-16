@@ -7,6 +7,7 @@ use App\Domains\Finance\Models\BankAccount;
 use App\Domains\Finance\Models\FinanceGoal;
 use App\Domains\Finance\Resources\FinanceGoalResource;
 use App\Domains\Finance\Services\FinanceReportService;
+use App\Domains\Finance\Services\UserClock;
 use App\Domains\Habits\Models\Habit;
 use App\Domains\Tasks\Models\Task;
 use App\Models\User;
@@ -16,7 +17,7 @@ final class DashboardService
 {
     public function getDashboard(User $user): array
     {
-        $today = today();
+        $today = Carbon::parse(UserClock::today($user));
         $startOfMonth = $today->copy()->startOfMonth();
         $endOfMonth = $today->copy()->endOfMonth();
 

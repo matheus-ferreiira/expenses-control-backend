@@ -237,3 +237,10 @@ php artisan tinker    # REPL
 - [ ] WebSockets (broadcasting)
 - [ ] App mobile (tokens Sanctum já funcionam)
 - [ ] Analytics e relatórios avançados
+
+## Testes e deploy com segurança
+
+- **Testes**: `php artisan test` só roda contra um MySQL local. O `phpunit.xml` fixa `DB_HOST=127.0.0.1` e o `tests/TestCase.php` recusa qualquer outro host antes do `RefreshDatabase` apagar o banco.
+- **Deploy**: o container roda `php artisan app:release-migrate` em vez de `migrate --force`. Uma migration pendente só é aplicada em produção se estiver listada em `database/release-approved-migrations.txt`.
+- **Release com migration**: (1) faça backup completo de produção e confira a restauração; (2) liste o nome da migration no arquivo de aprovação, no mesmo commit; (3) publique e confira que ela rodou; (4) limpe a lista na release seguinte.
+- **Rotinas diárias**: o agendador (`schedule:work`) roda no mesmo container. Ao subir, o deploy estende as recorrências e confirma as compras de cartão já vencidas.

@@ -6,6 +6,7 @@ use App\Domains\Finance\Enums\TransactionType;
 use App\Http\Requests\BaseFormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
+use Illuminate\Validation\Rules\Exists;
 
 class StoreTransactionRequest extends BaseFormRequest
 {
@@ -31,9 +32,10 @@ class StoreTransactionRequest extends BaseFormRequest
             ],
             'card_id' => ['nullable', 'uuid', Rule::exists('credit_cards', 'id')->where('user_id', $this->user()->id)],
             'statement_month' => ['nullable', 'date_format:Y-m'],
-            'category_id' => ['nullable', 'uuid', Rule::exists('transaction_categories', 'id')->where('user_id', $this->user()->id)],
+            'category_id' => ['nullable', 'uuid', $this->categoryRule()],
             'goal_id' => ['nullable', 'uuid', Rule::exists('finance_goals', 'id')->where('user_id', $this->user()->id)],
             'is_recurring' => ['nullable', 'boolean'],
+            'is_reimbursement' => ['sometimes', 'boolean'],
             'recurrence_config' => ['nullable', 'array'],
             'total_installments' => ['nullable', 'integer', 'min:2', 'max:60'],
             'tag_ids' => ['nullable', 'array'],
@@ -43,6 +45,18 @@ class StoreTransactionRequest extends BaseFormRequest
 
     public function messages(): array
     {
-        return ['account_id.prohibited' => 'Escolha a conta ou o cartão, não os dois: a compra no cartão sai da conta só no pagamento da fatura.'];
+        return [
+            'account_id.prohibited' => 'Escolha a conta ou o cartão, não os dois: a compra no cartão sai da conta só no pagamento da fatura.',
+            'category_id.exists' => 'Escolha uma categoria do mesmo tipo do lançamento (de despesa para despesa, de receita para receita).',
+        ];
+    }
+
+    /** A category belongs to the user and, for income/expense, has the same type as the transaction (D-27). */
+    private function categoryRule(): Exists
+    {
+        $rule = Rule::exists('transaction_categories', 'id')->where('user_id', $this->user()->id);
+        $type = $this->input('type');
+
+        return in_array($type, ['income', 'expense'], true) ? $rule->where('type', $type) : $rule;
     }
 }

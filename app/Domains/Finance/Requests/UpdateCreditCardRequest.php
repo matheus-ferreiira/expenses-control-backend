@@ -3,6 +3,7 @@
 namespace App\Domains\Finance\Requests;
 
 use App\Http\Requests\BaseFormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateCreditCardRequest extends BaseFormRequest
 {
@@ -13,7 +14,7 @@ class UpdateCreditCardRequest extends BaseFormRequest
             'limit_amount' => ['nullable', 'numeric', 'min:0'],
             'closing_day' => ['nullable', 'integer', 'min:1', 'max:31'],
             'due_day' => ['nullable', 'integer', 'min:1', 'max:31'],
-            'bank_account_id' => ['nullable', 'string', 'uuid'],
+            'bank_account_id' => ['nullable', 'uuid', Rule::exists('bank_accounts', 'id')->where('user_id', $this->user()->id)],
             'color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{3,8}$/'],
             'is_active' => ['nullable', 'boolean'],
         ];

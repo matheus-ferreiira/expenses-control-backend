@@ -4,6 +4,7 @@ namespace App\Domains\Finance\Requests;
 
 use App\Domains\Finance\Models\FinanceGoal;
 use App\Http\Requests\BaseFormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class StoreBudgetRequest extends BaseFormRequest
@@ -11,15 +12,22 @@ class StoreBudgetRequest extends BaseFormRequest
     public function rules(): array
     {
         return [
-            'month' => ['required', 'integer', 'min:1', 'max:12'],
+            'month' => ['required', 'integer', 'min:1', 'max:12',
+                // One budget per month (D-24): a duplicate used to fail with a 500.
+                Rule::unique('budgets')->where('user_id', $this->user()->id)->where('year', (int) $this->input('year'))],
             'year' => ['required', 'integer', 'min:2000', 'max:2100'],
             'base_amount' => ['required', 'numeric', 'min:0.01', 'max:9999999999'],
             'is_template' => ['sometimes', 'boolean'],
             'items' => ['sometimes', 'array'],
-            'items.*.category_id' => ['required_with:items', 'uuid', 'exists:transaction_categories,id'],
+            'items.*.category_id' => ['required_with:items', 'uuid', Rule::exists('transaction_categories', 'id')->where('user_id', $this->user()->id)->where('type', 'expense')],
             'items.*.amount' => ['required_with:items', 'numeric', 'min:0.01', 'max:9999999999'],
             'items.*.percentage' => ['sometimes', 'numeric', 'min:0', 'max:100'],
         ];
+    }
+
+    public function messages(): array
+    {
+        return ['month.unique' => 'Já existe um orçamento para este mês. Edite o existente.'];
     }
 
     public function withValidator(Validator $validator): void
@@ -31,6 +39,7 @@ class StoreBudgetRequest extends BaseFormRequest
             // Sum percentages from items (derived from amount / base_amount)
             $itemsTotal = collect($items)->sum(function ($item) use ($baseAmount) {
                 $amount = (float) ($item['amount'] ?? 0);
+
                 return $baseAmount > 0 ? ($amount / $baseAmount) * 100 : 0;
             });
 
