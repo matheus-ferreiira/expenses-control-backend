@@ -159,6 +159,7 @@ Route::prefix('v1')->group(function () {
                 Route::get('cashflow', [FinanceReportController::class, 'cashFlow']);
                 Route::get('series', [FinanceReportController::class, 'series']);
                 Route::get('categories', [FinanceReportController::class, 'categoryTotals']);
+                Route::get('category-transactions', [FinanceReportController::class, 'categoryTransactions']);
                 Route::get('balance', [FinanceReportController::class, 'consolidatedBalance']);
             });
 

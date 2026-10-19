@@ -8,6 +8,7 @@ use App\Domains\Finance\Models\BankAccount;
 use App\Domains\Finance\Models\Transaction;
 use App\Models\User;
 use Carbon\Carbon;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 final class FinanceReportService
 {
@@ -135,30 +136,8 @@ final class FinanceReportService
         $pendingReserved = $this->reserved($pending, $reserveIds);
         $pendingSaved = $pending->where('type', TransactionType::Expense)->whereNotNull('goal_id')->sum('amount') + $pendingReserved;
 
-        $expensesByCategory = $confirmed
-            ->filter(fn ($transaction) => app(FinancialEffects::class)->economic($transaction)['expense'] !== 0)
-            ->groupBy('category_id')
-            ->map(function ($group) {
-                $first = $group->first();
-
-                return [
-                    'category_id' => $first->category_id,
-                    'category' => $first->category?->name ?? 'Sem categoria',
-                    'color' => $first->category?->color ?? '#888',
-                    'total' => $this->total($group, 'expense'),
-                    'count' => $group->count(),
-                    'percentage' => 0,
-                ];
-            })
-            ->values();
-
-        if ($expenses > 0) {
-            $expensesByCategory = $expensesByCategory->map(function ($item) use ($expenses) {
-                $item['percentage'] = round(($item['total'] / $expenses) * 100, 1);
-
-                return $item;
-            });
-        }
+        $expensesByCategory = $this->categoryBreakdown($confirmed, 'expense', $expenses);
+        $incomeByCategory = $this->categoryBreakdown($confirmed, 'income', $income);
 
         return [
             'year' => $year,
@@ -176,7 +155,46 @@ final class FinanceReportService
             'largest_expense' => $this->largestExpense($confirmed),
             'transactions_count' => $transactions->count(),
             'expenses_by_category' => $expensesByCategory,
+            'income_by_category' => $incomeByCategory,
         ];
+    }
+
+    private function categoryBreakdown($confirmed, string $kind, float $total)
+    {
+        return $confirmed
+            ->filter(fn ($transaction) => app(FinancialEffects::class)->economic($transaction)[$kind] !== 0)
+            ->groupBy('category_id')
+            ->map(function ($group) use ($kind, $total) {
+                $first = $group->first();
+                $categoryTotal = $this->total($group, $kind);
+
+                return [
+                    'category_id' => $first->category_id,
+                    'category' => $first->category?->name ?? 'Sem categoria',
+                    'color' => $first->category?->color ?? '#888',
+                    'total' => $categoryTotal,
+                    'count' => $group->count(),
+                    'percentage' => $total > 0 ? round(($categoryTotal / $total) * 100, 1) : 0,
+                ];
+            })
+            ->values();
+    }
+
+    /** Drill-down uses the same confirmed economic effects as the monthly category totals. */
+    public function getCategoryTransactions(User $user, int $year, int $month, string $kind, ?string $categoryId, int $page, int $perPage): LengthAwarePaginator
+    {
+        $effects = app(FinancialEffects::class);
+        $transactions = Transaction::forUser($user->id)
+            ->inMonth($year, $month)->confirmed()
+            ->where('category_id', $categoryId)
+            ->orderByDesc('transaction_date')->orderByDesc('id')
+            ->get()
+            ->filter(fn ($transaction) => $effects->economic($transaction)[$kind] !== 0)
+            ->values();
+        $items = $transactions->forPage($page, $perPage)->values();
+        $items->load(['category', 'account', 'destinationAccount', 'card', 'tags', 'goal']);
+
+        return new LengthAwarePaginator($items, $transactions->count(), $perPage, $page);
     }
 
     public function getYearlySummary(User $user, int $year): array
