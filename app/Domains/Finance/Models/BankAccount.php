@@ -63,4 +63,21 @@ class BankAccount extends Model
     {
         return $query->where('is_active', true);
     }
+
+    /** Accounts whose money is available to spend (everything except reserves). */
+    public function scopeAvailable(Builder $query): Builder
+    {
+        return $query->where('type', '!=', AccountType::Investment->value);
+    }
+
+    /** Reserve accounts: money put away (savings box, investments), shown as "Guardado". */
+    public function scopeReserve(Builder $query): Builder
+    {
+        return $query->where('type', AccountType::Investment->value);
+    }
+
+    public function isReserve(): bool
+    {
+        return $this->type?->isReserve() ?? false;
+    }
 }

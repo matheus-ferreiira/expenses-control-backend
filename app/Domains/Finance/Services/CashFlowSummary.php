@@ -2,6 +2,7 @@
 
 namespace App\Domains\Finance\Services;
 
+use App\Domains\Finance\Models\BankAccount;
 use App\Domains\Finance\Models\Transaction;
 use Illuminate\Support\Facades\DB;
 
@@ -18,16 +19,18 @@ final class CashFlowSummary
         foreach ($sources as $source) {
             $add($source->posted_on, (int) $source->cash_cents);
         }
+        // Reserve accounts sit outside the cash flow: moving money into the savings box is an outflow of available cash
+        $reserveIds = BankAccount::forUser($userId)->reserve()->pluck('id')->all();
         $manual = Transaction::forUser($userId)->confirmed()->whereNull('import_batch_id')->inPeriod($start, $end)->get();
         foreach ($manual as $transaction) {
             if ($transaction->reconciliation_status === 'conflict') {
                 continue;
             }
             $cents = FinancialEffects::cents($transaction->amount);
-            if ($transaction->account_id) {
+            if ($transaction->account_id && ! in_array($transaction->account_id, $reserveIds, true)) {
                 $add($transaction->transaction_date->toDateString(), $transaction->type->value === 'income' ? $cents : -$cents);
             }
-            if ($transaction->destination_account_id && $transaction->type->value === 'transfer') {
+            if ($transaction->destination_account_id && $transaction->type->value === 'transfer' && ! in_array($transaction->destination_account_id, $reserveIds, true)) {
                 $add($transaction->transaction_date->toDateString(), $cents);
             }
         }

@@ -10,6 +10,12 @@ enum AccountType: string
     case Cash = 'cash';
     case Wallet = 'wallet';
 
+    /** Money put away (a savings box / investment): kept out of the available and projected balance. */
+    public function isReserve(): bool
+    {
+        return $this === self::Investment;
+    }
+
     public function label(): string
     {
         return match ($this) {

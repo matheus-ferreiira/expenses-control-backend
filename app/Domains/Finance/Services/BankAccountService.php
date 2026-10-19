@@ -74,24 +74,54 @@ final class BankAccountService
 
     public function getHistoricalBalance(User $user, int $year, int $month): array
     {
-        $accounts = BankAccount::forUser($user->id)->active()->get();
+        // Reserve accounts (savings box, investments) are money put away: they are reported apart as
+        // "reserve_balance" and stay out of the available and projected balance.
+        $all = BankAccount::forUser($user->id)->active()->get();
+        [$reserves, $accounts] = $all->partition(fn (BankAccount $account) => $account->isReserve());
+        $reserveIds = $reserves->pluck('id')->all();
         if (DB::table('account_balance_checkpoints')->where('user_id', $user->id)->where('kind', 'opening')->exists()) {
             $date = Carbon::createFromDate($year, $month, 1)->endOfMonth()->toDateString();
-            $balances = $accounts->map(fn ($account) => app(AccountBalanceHistory::class)->at($account, $date));
             $today = UserClock::today($user);
             // Same base as the current balance (D-17): an account without a verified opening (e.g. a wallet)
             // counts with its recorded balance for today and the future, flagged as unverified.
             // Past months cannot be rebuilt for it, so there it stays out.
-            $known = $balances->sum(fn ($b) => $b['balance_cents'] ?? ($date >= $today ? FinancialEffects::cents((string) $b['current_recorded_balance']) : 0));
+            $sum = fn ($balances) => $balances->sum(fn ($b) => $b['balance_cents'] ?? ($date >= $today ? FinancialEffects::cents((string) $b['current_recorded_balance']) : 0));
+            $balances = $accounts->values()->map(fn ($account) => app(AccountBalanceHistory::class)->at($account, $date));
+            $reserveBalances = $reserves->values()->map(fn ($account) => app(AccountBalanceHistory::class)->at($account, $date));
+            $known = $sum($balances);
+            $reserved = $sum($reserveBalances);
             // Overdue forecasts are still owed, so they count too (only from today on: past months are history).
             // Scheduled statement payments are covered by the statements themselves (below).
             $pending = $date < $today ? collect() : Transaction::forUser($user->id)->pending()->whereNotNull('account_id')->where('transaction_date', '<=', $date)
                 ->whereRaw("COALESCE(reconciliation_status, '') <> 'conflict'")
                 ->where(fn ($q) => $q->where('type', '!=', TransactionType::Transfer->value)->orWhereNull('card_id'))->get();
-            $delta = $pending->sum(fn ($t) => FinancialEffects::cents($t->amount) * ($t->type === TransactionType::Income ? 1 : -1) + ($t->type === TransactionType::Transfer && $t->destination_account_id ? FinancialEffects::cents($t->amount) : 0));
+            $delta = 0;
+            $reserveDelta = 0;
+            foreach ($pending as $t) {
+                $cents = FinancialEffects::cents($t->amount);
+                $signed = $t->type === TransactionType::Income ? $cents : -$cents;
+                if (in_array($t->account_id, $reserveIds, true)) {
+                    $reserveDelta += $signed;
+                } else {
+                    $delta += $signed;
+                }
+                if ($t->type === TransactionType::Transfer && $t->destination_account_id) {
+                    if (in_array($t->destination_account_id, $reserveIds, true)) {
+                        $reserveDelta += $cents;
+                    } else {
+                        $delta += $cents;
+                    }
+                }
+            }
             $cards = $this->cardStatementsDue($user, $date);
 
-            return ['balance' => $known / 100, 'projected_balance' => ($known + $delta - $cards['cents']) / 100, 'card_due' => $cards['cents'] / 100, 'card_statements' => $cards['items'], 'accounts' => $balances, 'unverified_accounts' => $balances->whereNull('balance_cents')->pluck('account_id')];
+            return [
+                'balance' => $known / 100, 'projected_balance' => ($known + $delta - $cards['cents']) / 100,
+                'reserve_balance' => $reserved / 100, 'projected_reserve_balance' => ($reserved + $reserveDelta) / 100,
+                'card_due' => $cards['cents'] / 100, 'card_statements' => $cards['items'],
+                'accounts' => $balances->concat($reserveBalances)->values(),
+                'unverified_accounts' => $balances->concat($reserveBalances)->whereNull('balance_cents')->pluck('account_id')->values(),
+            ];
         }
         $currentBalance = (float) $accounts->sum('balance');
         $today = Carbon::parse(UserClock::today($user));
@@ -103,6 +133,7 @@ final class BankAccountService
             ->confirmed()
             ->where('type', TransactionType::Income)
             ->whereNull('card_id')
+            ->whereNotIn('account_id', $reserveIds)
             ->where('transaction_date', '>', $endOfMonth->toDateString())
             ->sum('amount');
 
@@ -110,6 +141,7 @@ final class BankAccountService
             ->confirmed()
             ->where('type', TransactionType::Expense)
             ->whereNull('card_id')
+            ->whereNotIn('account_id', $reserveIds)
             ->where('transaction_date', '>', $endOfMonth->toDateString())
             ->sum('amount');
 
@@ -125,6 +157,7 @@ final class BankAccountService
                 ->pending()
                 ->where('type', TransactionType::Income)
                 ->whereNull('card_id')
+                ->whereNotIn('account_id', $reserveIds)
                 ->where('transaction_date', '<=', $endOfMonth->toDateString())
                 ->sum('amount');
 
@@ -132,6 +165,7 @@ final class BankAccountService
                 ->pending()
                 ->where('type', TransactionType::Expense)
                 ->whereNull('card_id')
+                ->whereNotIn('account_id', $reserveIds)
                 ->where('transaction_date', '<=', $endOfMonth->toDateString())
                 ->sum('amount');
         } else {
@@ -140,6 +174,7 @@ final class BankAccountService
                 ->pending()
                 ->where('type', TransactionType::Income)
                 ->whereNull('card_id')
+                ->whereNotIn('account_id', $reserveIds)
                 ->inMonth($year, $month)
                 ->sum('amount');
 
@@ -147,6 +182,7 @@ final class BankAccountService
                 ->pending()
                 ->where('type', TransactionType::Expense)
                 ->whereNull('card_id')
+                ->whereNotIn('account_id', $reserveIds)
                 ->inMonth($year, $month)
                 ->sum('amount');
         }
@@ -155,6 +191,7 @@ final class BankAccountService
         return [
             'balance' => $historicalBalance,
             'projected_balance' => $historicalBalance + $pendingIncome - $pendingExpense - $cards['cents'] / 100,
+            'reserve_balance' => (float) $reserves->sum('balance'),
             'card_due' => $cards['cents'] / 100,
             'card_statements' => $cards['items'],
         ];
@@ -188,13 +225,15 @@ final class BankAccountService
     {
         $accounts = BankAccount::forUser($user->id)->active()->get();
 
-        $totalBalance = $accounts->sum('balance');
-        $byCurrency = $accounts->groupBy('currency')->map(fn ($group) => $group->sum('balance'));
+        [$reserves, $available] = $accounts->partition(fn (BankAccount $account) => $account->isReserve());
+        $totalBalance = $available->sum('balance');
+        $byCurrency = $available->groupBy('currency')->map(fn ($group) => $group->sum('balance'));
 
         return [
             'total' => $totalBalance,
+            'reserve' => $reserves->sum('balance'),
             'by_currency' => $byCurrency,
-            'accounts' => $accounts->map(fn ($a) => ['id' => $a->id, 'name' => $a->name, 'balance' => $a->balance]),
+            'accounts' => $accounts->map(fn ($a) => ['id' => $a->id, 'name' => $a->name, 'balance' => $a->balance, 'is_reserve' => $a->isReserve()])->values(),
         ];
     }
 

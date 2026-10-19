@@ -4,6 +4,7 @@ namespace App\Domains\Finance\Services;
 
 use App\Domains\Finance\Enums\TransactionStatus;
 use App\Domains\Finance\Enums\TransactionType;
+use App\Domains\Finance\Models\BankAccount;
 use App\Domains\Finance\Models\Transaction;
 use App\Models\User;
 use Carbon\Carbon;
@@ -15,6 +16,30 @@ final class FinanceReportService
         $effects = app(FinancialEffects::class);
 
         return $transactions->sum(fn ($transaction) => $effects->economic($transaction)[$kind]) / 100;
+    }
+
+    /** @return list<string> ids of the user's reserve accounts (savings box, investments) */
+    private function reserveIds(User $user): array
+    {
+        return BankAccount::forUser($user->id)->reserve()->pluck('id')->all();
+    }
+
+    /**
+     * Net money moved into reserve accounts: transfers in from a spending account minus withdrawals back.
+     * A transfer is never income or expense, so without this the money put away would not show anywhere.
+     */
+    private function reserved($transactions, array $reserveIds): float
+    {
+        $cents = 0;
+        foreach ($transactions->where('type', TransactionType::Transfer) as $t) {
+            $into = in_array($t->destination_account_id, $reserveIds, true);
+            $outOf = in_array($t->account_id, $reserveIds, true);
+            if ($into !== $outOf && $t->reconciliation_status !== 'conflict') {
+                $cents += ($into ? 1 : -1) * FinancialEffects::cents($t->amount);
+            }
+        }
+
+        return $cents / 100;
     }
 
     /**
@@ -101,10 +126,14 @@ final class FinanceReportService
         // "expenses" so the report never punishes the user for saving money.
         $income = $this->total($confirmed, 'income');
         $expenses = $this->total($confirmed, 'expense');
-        $saved = $confirmed->where('type', TransactionType::Expense)->whereNotNull('goal_id')->sum('amount');
+        // Money put away counts as saved too: goal contributions plus the net moved into reserve accounts
+        $reserveIds = $this->reserveIds($user);
+        $reserved = $this->reserved($confirmed, $reserveIds);
+        $saved = $confirmed->where('type', TransactionType::Expense)->whereNotNull('goal_id')->sum('amount') + $reserved;
         $pendingIncome = $this->total($pending, 'income');
         $pendingExpenses = $this->total($pending, 'expense');
-        $pendingSaved = $pending->where('type', TransactionType::Expense)->whereNotNull('goal_id')->sum('amount');
+        $pendingReserved = $this->reserved($pending, $reserveIds);
+        $pendingSaved = $pending->where('type', TransactionType::Expense)->whereNotNull('goal_id')->sum('amount') + $pendingReserved;
 
         $expensesByCategory = $confirmed
             ->filter(fn ($transaction) => app(FinancialEffects::class)->economic($transaction)['expense'] !== 0)
@@ -137,6 +166,8 @@ final class FinanceReportService
             'income' => (float) $income,
             'expenses' => (float) $expenses,
             'saved' => round((float) $saved, 2),
+            'reserved' => round($reserved, 2),
+            'pending_reserved' => round($pendingReserved, 2),
             // Rounded at the API boundary: float subtraction used to leak values like -1557.3000000000002 (D-31)
             'balance' => round($income - $expenses - (float) $saved, 2),
             'pending_income' => (float) $pendingIncome,
@@ -154,6 +185,7 @@ final class FinanceReportService
             ->whereYear('transaction_date', $year)
             ->get();
 
+        $reserveIds = $this->reserveIds($user);
         $months = [];
         for ($m = 1; $m <= 12; $m++) {
             $data = $transactions->filter(fn ($t) => $t->transaction_date->month === $m);
@@ -161,12 +193,14 @@ final class FinanceReportService
             $pendingData = $data->where('status', TransactionStatus::Pending);
             $income = $this->total($confirmedData, 'income');
             $expenses = $this->total($confirmedData, 'expense');
-            $saved = round((float) $confirmedData->where('type', TransactionType::Expense)->whereNotNull('goal_id')->sum('amount'), 2);
+            $reserved = $this->reserved($confirmedData, $reserveIds);
+            $saved = round((float) $confirmedData->where('type', TransactionType::Expense)->whereNotNull('goal_id')->sum('amount') + $reserved, 2);
             $months[$m] = [
                 'month' => $m,
                 'income' => $income,
                 'expenses' => $expenses,
                 'saved' => $saved,
+                'reserved' => round($reserved, 2),
                 'balance' => round($income - $expenses - $saved, 2),
                 'pending_income' => $this->total($pendingData, 'income'),
                 'pending_expenses' => $this->total($pendingData, 'expense'),

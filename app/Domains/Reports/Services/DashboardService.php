@@ -66,10 +66,14 @@ final class DashboardService
         $income = $summary['income'];
         $expenses = $summary['expenses'];
 
-        $totalBalance = BankAccount::forUser($user->id)->active()->sum('balance');
+        // Money in reserve accounts (savings box) is shown apart, not as spendable balance
+        $totalBalance = BankAccount::forUser($user->id)->active()->available()->sum('balance');
+        $reserveBalance = BankAccount::forUser($user->id)->active()->reserve()->sum('balance');
 
         return [
             'total_balance' => (float) $totalBalance,
+            'reserve_balance' => (float) $reserveBalance,
+            'month_reserved' => $summary['reserved'],
             'month_income' => (float) $income,
             'month_expenses' => (float) $expenses,
             'month_balance' => $summary['balance'],

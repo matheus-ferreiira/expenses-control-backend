@@ -19,6 +19,8 @@ class BankAccountResource extends JsonResource
             'currency' => $this->currency,
             'color' => $this->color,
             'is_active' => $this->is_active,
+            // Reserve accounts hold money put away: shown as "Guardado", outside the available balance
+            'is_reserve' => $this->isReserve(),
             // Last balance check and whether the account has a verified starting point (D-17, D-42)
             'last_checked_on' => DB::table('account_balance_checkpoints')->where('account_id', $this->id)->max('observed_on'),
             'balance_verified' => DB::table('account_balance_checkpoints')->where('account_id', $this->id)->where('kind', 'opening')->exists(),
