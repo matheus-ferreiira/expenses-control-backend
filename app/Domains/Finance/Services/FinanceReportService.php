@@ -44,6 +44,32 @@ final class FinanceReportService
     }
 
     /**
+     * Average day-to-day spending over the last 60 days (own share, confirmed): everything except recurring
+     * series (fixed bills, subscriptions) and installments, which are already forecast. Lets the current
+     * month's forecast account for the spending that is never scheduled. Null for any other month.
+     */
+    private function dailyVariableSpending(User $user, int $year, int $month): ?float
+    {
+        $today = Carbon::parse(UserClock::today($user));
+        if ($today->year !== $year || $today->month !== $month) {
+            return null;
+        }
+        $first = Transaction::forUser($user->id)->confirmed()->min('transaction_date');
+        if (! $first) {
+            return null;
+        }
+        $from = max($today->copy()->subDays(59)->toDateString(), Carbon::parse($first)->toDateString());
+        $days = (int) Carbon::parse($from)->diffInDays($today) + 1;
+        $effects = app(FinancialEffects::class);
+        $cents = Transaction::forUser($user->id)->confirmed()->where('type', TransactionType::Expense)
+            ->whereNull('recurrence_group_id')->whereNull('installment_group_id')
+            ->whereBetween('transaction_date', [$from, $today->toDateString()])->get()
+            ->sum(fn ($t) => $effects->economic($t)['expense']);
+
+        return round($cents / 100 / $days, 2);
+    }
+
+    /**
      * The month's largest confirmed spending, by its economic effect (the user's own share),
      * computed over the whole month — not over the page loaded in the browser (D-14).
      */
@@ -153,6 +179,7 @@ final class FinanceReportService
             'pending_expenses' => (float) $pendingExpenses,
             'pending_saved' => round((float) $pendingSaved, 2),
             'largest_expense' => $this->largestExpense($confirmed),
+            'daily_variable_spending' => $this->dailyVariableSpending($user, $year, $month),
             'transactions_count' => $transactions->count(),
             'expenses_by_category' => $expensesByCategory,
             'income_by_category' => $incomeByCategory,
