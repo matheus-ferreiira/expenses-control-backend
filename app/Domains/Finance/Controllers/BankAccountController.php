@@ -8,6 +8,7 @@ use App\Domains\Finance\Requests\StoreBankAccountRequest;
 use App\Domains\Finance\Requests\UpdateBankAccountRequest;
 use App\Domains\Finance\Resources\BankAccountResource;
 use App\Domains\Finance\Services\AccountBalanceHistory;
+use App\Domains\Finance\Services\AccountMovements;
 use App\Domains\Finance\Services\BalanceObservationService;
 use App\Domains\Finance\Services\BankAccountService;
 use App\Domains\Finance\Services\UserClock;
@@ -100,6 +101,14 @@ class BankAccountController extends Controller
     }
 
     /** Balance checks of the account, newest first (D-42). */
+    /** What came in and went out of each account in a month (cash, as the bank statement shows it). */
+    public function movements(Request $request): JsonResponse
+    {
+        $data = $request->validate(['year' => ['required', 'integer', 'min:2000', 'max:2100'], 'month' => ['required', 'integer', 'min:1', 'max:12']]);
+
+        return $this->success(app(AccountMovements::class)->forMonth($request->user(), (int) $data['year'], (int) $data['month']));
+    }
+
     public function balanceObservations(BankAccount $account): JsonResponse
     {
         $this->authorize('view', $account);

@@ -115,6 +115,7 @@ Route::prefix('v1')->group(function () {
             Route::get('balance/historical', [BankAccountController::class, 'historicalBalance']);
             Route::get('balance', [BankAccountController::class, 'consolidatedBalance']);
 
+            Route::get('accounts/movements', [BankAccountController::class, 'movements']);
             Route::apiResource('accounts', BankAccountController::class);
             Route::get('accounts/{account}/balance-at', [BankAccountController::class, 'balanceAt']);
             Route::post('accounts/{account}/balance-observations', [BankAccountController::class, 'observeBalance']);
