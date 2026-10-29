@@ -11,7 +11,7 @@ Base URL local: `http://localhost:8001/api/v1` · produção: `https://vault-api
 
 | Módulo | Rotas |
 |---|---|
-| Auth | `POST auth/register` · `POST auth/login` · `POST auth/forgot-password` · `POST auth/reset-password` (throttle 10/min) · `GET auth/google/redirect` · `GET auth/google/callback` · 🔒 `POST auth/logout` · `POST auth/logout-all` · `GET auth/me` · `PATCH auth/profile` · `PATCH auth/password` · `PATCH auth/settings` |
+| Auth | `POST auth/register` (fechado: 403) · `POST auth/login` · `POST auth/forgot-password` · `POST auth/reset-password` (throttle 10/min) · `GET auth/google/redirect` · `GET auth/google/callback` · 🔒 `POST auth/logout` · `POST auth/logout-all` · `GET auth/me` · `PATCH auth/profile` · `PATCH auth/password` · `PATCH auth/settings` |
 | Dashboard 🔒 | `GET dashboard` |
 | Tarefas 🔒 | `tasks` (CRUD) · `POST tasks/reorder` · `PATCH tasks/{id}/complete\|archive\|unarchive` · `GET tasks/{id}/recurrence-history` · `tasks/{id}/subtasks` · `task-labels` · `task-lists` · `task-tags` |
 | Hábitos 🔒 | `habits` (CRUD) · `GET habits/today` · `PATCH habits/{id}/archive\|unarchive` · `POST\|DELETE habits/{id}/log` · `GET habits/{id}/stats` · `GET habits/{id}/heatmap` |
@@ -39,7 +39,7 @@ Accept: application/json
 ## Auth
 
 ### POST /auth/register
-Criar nova conta.
+Criar nova conta. **Fechado por padrão:** com `AUTH_REGISTRATION_ENABLED=false` (o padrão) responde **403** `{ "success": false, "message": "O cadastro de novas contas está fechado." }`.
 
 **Body:**
 ```json

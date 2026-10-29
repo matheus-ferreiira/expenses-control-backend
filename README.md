@@ -123,4 +123,4 @@ Todo commit atualiza a documentação afetada (`CLAUDE.md`, este README, `docs/A
 
 - [ ] Google Calendar sync
 - [ ] Notificações (jobs + queues já configurados)
-- [ ] Decidir se o cadastro público (`POST /auth/register`) continua aberto
+- [x] Cadastro público fechado (`AUTH_REGISTRATION_ENABLED=false`, padrão): `POST /auth/register` responde 403 e o login com Google só entra em contas que já existem

@@ -184,7 +184,7 @@ Rotas autenticadas usam `auth:sanctum`. Lista completa em `docs/API.md`.
 
 | Módulo | Prefixo |
 |--------|---------|
-| Auth | `/auth` (register, login, forgot/reset e Google públicos; logout, me, profile, password, settings privados) |
+| Auth | `/auth` (login, forgot/reset e Google públicos; register fechado por padrão; logout, me, profile, password, settings privados) |
 | Dashboard | `/dashboard` |
 | Finanças | `/finance` (accounts, cards, transactions, categories, tags, reports, budgets, goals, balance) |
 | Tarefas | `/tasks`, `/task-labels`, `/task-lists`, `/task-tags` |

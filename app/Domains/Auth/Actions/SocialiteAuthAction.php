@@ -3,6 +3,7 @@
 namespace App\Domains\Auth\Actions;
 
 use App\Domains\Auth\DTOs\GoogleAuthDTO;
+use App\Domains\Auth\Exceptions\RegistrationClosedException;
 use App\Models\User;
 
 final class SocialiteAuthAction
@@ -25,6 +26,11 @@ final class SocialiteAuthAction
             ]);
 
             return $user;
+        }
+
+        // Signing in with Google must not open accounts while registration is closed
+        if (! config('auth.registration_enabled')) {
+            throw new RegistrationClosedException;
         }
 
         return User::create([

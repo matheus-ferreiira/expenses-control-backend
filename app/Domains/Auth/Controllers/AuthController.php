@@ -5,6 +5,7 @@ namespace App\Domains\Auth\Controllers;
 use App\Domains\Auth\DTOs\GoogleAuthDTO;
 use App\Domains\Auth\DTOs\LoginDTO;
 use App\Domains\Auth\DTOs\RegisterDTO;
+use App\Domains\Auth\Exceptions\RegistrationClosedException;
 use App\Domains\Auth\Requests\ForgotPasswordRequest;
 use App\Domains\Auth\Requests\LoginRequest;
 use App\Domains\Auth\Requests\RegisterRequest;
@@ -28,6 +29,10 @@ class AuthController extends Controller
 
     public function register(RegisterRequest $request): JsonResponse
     {
+        if (! config('auth.registration_enabled')) {
+            return $this->error((new RegistrationClosedException)->getMessage(), 403);
+        }
+
         $result = $this->authService->register(
             RegisterDTO::fromArray($request->validated())
         );
@@ -152,6 +157,8 @@ class AuthController extends Controller
             );
 
             return redirect("{$frontendUrl}/auth/google/callback?token={$result['token']}");
+        } catch (RegistrationClosedException) {
+            return redirect("{$frontendUrl}/login?error=registration_closed");
         } catch (\Exception $e) {
             Log::error('Google OAuth callback failed', [
                 'error' => $e->getMessage(),
