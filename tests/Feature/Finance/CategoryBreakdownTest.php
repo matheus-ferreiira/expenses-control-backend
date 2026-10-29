@@ -30,6 +30,8 @@ class CategoryBreakdownTest extends TestCase
         $this->assertEquals(4000, $rows->sum('total'));
         $this->assertEquals(75, $rows->firstWhere('category_id', $category->id)['percentage']);
         $this->assertSame(1, $rows->firstWhere('category_id', $category->id)['count']);
+        // Six-digit hex: the screens append an alpha ("#888" + "cc" was an invalid colour, drawn black)
+        $this->assertSame('#888888', $rows->firstWhere('category_id', null)['color']);
 
         $this->getJson('/api/v1/finance/reports/category-transactions?year=2026&month=10&type=income&category_id='.$category->id)
             ->assertOk()->assertJsonPath('meta.total', 1)->assertJsonPath('data.0.id', $salary->id);

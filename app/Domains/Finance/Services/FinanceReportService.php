@@ -106,7 +106,7 @@ final class FinanceReportService
             ->map(fn ($group) => [
                 'category_id' => $group->first()->category_id,
                 'category' => $group->first()->category?->name ?? 'Sem categoria',
-                'color' => $group->first()->category?->color ?? '#888',
+                'color' => $group->first()->category?->color ?? '#888888',
                 'total' => $group->sum(fn ($t) => $effects->economic($t)['expense']) / 100,
             ])
             ->filter(fn ($row) => $row['total'] > 0)
@@ -171,7 +171,7 @@ final class FinanceReportService
                 return [
                     'category_id' => $first->category_id,
                     'category' => $first->category?->name ?? 'Sem categoria',
-                    'color' => $first->category?->color ?? '#888',
+                    'color' => $first->category?->color ?? '#888888',
                     'total' => $categoryTotal,
                     'count' => $group->count(),
                     'percentage' => $total > 0 ? round(($categoryTotal / $total) * 100, 1) : 0,
