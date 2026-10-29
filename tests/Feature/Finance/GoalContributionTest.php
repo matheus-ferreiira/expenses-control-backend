@@ -149,4 +149,32 @@ class GoalContributionTest extends TestCase
 
         $this->assertSame(999.0, (float) $current);
     }
+
+    public function test_owner_can_edit_complete_and_delete_a_goal(): void
+    {
+        // The {financeGoal} route parameter did not match the controllers' $goal argument: Laravel bound an
+        // empty goal and the policy answered 403 to every edit, completion and deletion
+        $user = User::factory()->create();
+        $goal = FinanceGoal::factory()->create(['user_id' => $user->id, 'name' => 'Viagem', 'status' => 'active']);
+
+        $this->actingAs($user, 'sanctum')->putJson("/api/v1/finance/goals/{$goal->id}", ['name' => 'Viagem 2027'])
+            ->assertOk()->assertJsonPath('data.name', 'Viagem 2027');
+
+        $this->actingAs($user, 'sanctum')->postJson("/api/v1/finance/goals/{$goal->id}/complete")
+            ->assertOk()->assertJsonPath('data.status', 'completed');
+
+        $this->actingAs($user, 'sanctum')->deleteJson("/api/v1/finance/goals/{$goal->id}")->assertSuccessful();
+        $this->assertSoftDeleted('finance_goals', ['id' => $goal->id]);
+    }
+
+    public function test_user_cannot_change_another_users_goal(): void
+    {
+        $owner = User::factory()->create();
+        $other = User::factory()->create();
+        $goal = FinanceGoal::factory()->create(['user_id' => $owner->id]);
+
+        $this->actingAs($other, 'sanctum')->putJson("/api/v1/finance/goals/{$goal->id}", ['name' => 'X'])->assertForbidden();
+        $this->actingAs($other, 'sanctum')->postJson("/api/v1/finance/goals/{$goal->id}/complete")->assertForbidden();
+        $this->actingAs($other, 'sanctum')->deleteJson("/api/v1/finance/goals/{$goal->id}")->assertForbidden();
+    }
 }

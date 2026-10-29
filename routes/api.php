@@ -177,9 +177,10 @@ Route::prefix('v1')->group(function () {
             Route::prefix('goals')->group(function () {
                 Route::get('/', [FinanceGoalController::class, 'index']);
                 Route::post('/', [FinanceGoalController::class, 'store']);
-                Route::put('{financeGoal}', [FinanceGoalController::class, 'update']);
-                Route::post('{financeGoal}/complete', [FinanceGoalController::class, 'complete']);
-                Route::delete('{financeGoal}', [FinanceGoalController::class, 'destroy']);
+                // The parameter name must match the controllers' $goal argument, or Laravel binds an empty goal
+                Route::put('{goal}', [FinanceGoalController::class, 'update']);
+                Route::post('{goal}/complete', [FinanceGoalController::class, 'complete']);
+                Route::delete('{goal}', [FinanceGoalController::class, 'destroy']);
             });
         });
 
