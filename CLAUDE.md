@@ -247,3 +247,4 @@ class {Model}Test extends TestCase
 - Só MySQL local (nunca SQLite; o driver não está disponível)
 - `RefreshDatabase` em todos os testes de feature
 - Testes financeiros em `tests/Feature/Finance/` (relatórios, cartões, faturas, reservas, recorrência, defeitos da auditoria)
+- **Toda rota nova de Finanças que recebe um registro entra em `FinanceRoutesAccessTest`** (o dono consegue, outro usuário é recusado e nada muda). Os bugs de arquivar conta (500) e editar meta (403) passaram despercebidos porque nenhum teste fazia o caminho básico
