@@ -451,6 +451,10 @@ Criar conta.
 
 **Valores de `type`:** `checking` · `savings` · `investment` (reserva / "Guardado") · `cash` · `wallet`
 
+### PUT/PATCH /finance/accounts/{id} 🔒
+Atualização parcial: só os campos enviados mudam. Arquivar = `{ "is_active": false }`, desarquivar =
+`{ "is_active": true }`. O saldo não muda por aqui (só por transações ou "Conferir saldo").
+
 ### POST /finance/accounts/{id}/balance-observations 🔒
 "Conferir saldo". **Body:** `{ "date": "2026-10-19", "balance": "540.04", "evidence": "app do banco" }`.
 Resposta: `observed_cents`, `calculated_cents`, `difference_cents`, `opening_created` (a primeira conferência

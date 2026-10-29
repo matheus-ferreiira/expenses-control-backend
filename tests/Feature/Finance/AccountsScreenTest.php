@@ -68,4 +68,28 @@ class AccountsScreenTest extends TestCase
         $this->assertTrue($accounts['Importada']['balance_verified']);
         $this->assertSame('2026-10-15', $accounts['Conferida']['last_checked_on']);
     }
+
+    public function test_archiving_sends_only_is_active_and_keeps_the_other_fields(): void
+    {
+        $user = User::factory()->create();
+        $account = BankAccount::factory()->create([
+            'user_id' => $user->id, 'name' => 'Caixinha', 'type' => 'investment', 'bank_name' => 'Nubank',
+            'color' => '#34D399', 'balance' => '500.00', 'is_active' => true,
+        ]);
+
+        // The Contas screen archives and unarchives with a partial PATCH
+        $this->actingAs($user, 'sanctum')->patchJson("/api/v1/finance/accounts/{$account->id}", ['is_active' => false])
+            ->assertOk()->assertJsonPath('data.is_active', false);
+
+        $account->refresh();
+        $this->assertFalse($account->is_active);
+        $this->assertSame('Caixinha', $account->name);
+        $this->assertSame('investment', $account->type->value);
+        $this->assertSame('Nubank', $account->bank_name);
+        $this->assertSame('#34D399', $account->color);
+        $this->assertEqualsWithDelta(500, (float) $account->balance, 0.001);
+
+        $this->actingAs($user, 'sanctum')->patchJson("/api/v1/finance/accounts/{$account->id}", ['is_active' => true])
+            ->assertOk()->assertJsonPath('data.is_active', true);
+    }
 }

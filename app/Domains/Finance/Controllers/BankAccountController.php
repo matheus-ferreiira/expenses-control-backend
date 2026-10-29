@@ -47,11 +47,17 @@ class BankAccountController extends Controller
     {
         $this->authorize('update', $account);
 
-        $validated = $request->validated();
-        // Preserve the current balance if not explicitly provided in the request
-        if (! array_key_exists('balance', $validated)) {
-            $validated['balance'] = (float) $account->balance;
-        }
+        // A partial update (archiving sends only is_active) keeps every field it does not send:
+        // the DTO used to require the name and reset type, bank and colour to their defaults
+        $validated = array_merge([
+            'name' => $account->name,
+            'type' => $account->type?->value,
+            'bank_name' => $account->bank_name,
+            'balance' => (float) $account->balance,
+            'currency' => $account->currency,
+            'color' => $account->color,
+            'is_active' => $account->is_active,
+        ], $request->validated());
 
         $updated = $this->service->update($account, BankAccountDTO::fromArray($validated));
 
