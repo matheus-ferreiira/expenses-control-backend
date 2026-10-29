@@ -1,72 +1,115 @@
-# CLAUDE.md — Backend (Laravel 12)
+# CLAUDE.md — Backend (VaultOS, Laravel 12)
+
+API REST do VaultOS. O frontend fica em `../expenses-control-frontend`.
+
+## Regra de documentação (obrigatória)
+
+**Todo commit atualiza a documentação que ficou desatualizada por ele, no mesmo commit.**
+Antes de commitar, confira:
+
+- `CLAUDE.md` (este arquivo) — arquitetura, padrões, regras de segurança
+- `README.md` — instalação, domínios, rotas, deploy
+- `docs/API.md` — endpoints e formatos de resposta (sempre que uma rota ou um campo mudar)
+- `docs/ARCHITECTURE.md` — camadas e regras de negócio
+- `tools/recovery/README.md` — quando mexer nas ferramentas de recuperação
+- `../README.md` e `../CLAUDE.md` (pasta principal, fora do Git) — quando mudar algo do workspace
+- Se o commit muda o que uma tela mostra: docs do frontend (`../expenses-control-frontend/CLAUDE.md`, `docs/`)
+
+**Referência de design do produto:** a tela Visão Geral de Finanças do frontend
+(`../expenses-control-frontend/docs/design-system.md`). Ao criar endpoints para telas, entregue os números
+prontos (totais, saldos, categorias) como a Visão Geral consome: a tela não soma listas paginadas.
 
 ## Stack
-- **PHP 8.3** | **Laravel 12** | **MySQL 8.0** | **Sanctum** (tokens)
-- Testes: PHPUnit | Linting: Laravel Pint | Logs: Pail
+- **PHP ^8.3** (localmente roda com o PHP 8.4 portátil em `../.runtime/php84`) | **Laravel 12** | **MySQL 8** | **Sanctum** (tokens)
+- **Socialite** (login com Google) | Testes: PHPUnit | Lint: Laravel Pint | Logs: Pail
+
+## Segurança: produção × local
+
+- `.env` = `.env.local` → MySQL local. Produção **só** via `.env.production` / `--env=production`.
+- Testes nunca tocam produção: `phpunit.xml` fixa `DB_HOST=127.0.0.1` e `tests/TestCase.php` recusa
+  qualquer host não local antes do `RefreshDatabase`.
+- Caminho de teste preferido nesta máquina: suíte `phpunit.recovery.xml` com banco `vaultos_recovery_*`
+  (`RECOVERY_DATABASE`, `RECOVERY_LOCAL_PASSWORD`; o bootstrap força 127.0.0.1 e não lê `.env`).
+- Alteração de dados de produção só com autorização explícita do usuário e backup verificado antes.
 
 ## Arquitetura
 
 ```
 app/
 ├── Domains/
-│   ├── Auth/           login, register, forgot/reset password
-│   ├── Tasks/          tasks, subtasks, labels, recurrence
-│   ├── Habits/         habits, logs, streaks, heatmap
-│   ├── Finance/        bank accounts, credit cards, transactions, categories, goals
-│   ├── Calendar/       events (Google Calendar ready)
-│   ├── Reports/        dashboard, weekly productivity
-│   └── Shared/         DTOs compartilhados
-├── Models/User.php     UUID + SoftDeletes + locale/timezone/settings
-├── Traits/ApiResponse  success() created() noContent() paginatedSuccess() error()
-└── Providers/          AppServiceProvider — policies registradas manualmente
+│   ├── Auth/        login, register, forgot/reset, perfil, senha, settings, Google OAuth
+│   ├── Finance/     contas, cartões/faturas, transações, categorias, tags, orçamentos, metas, relatórios, recuperação
+│   ├── Tasks/       tarefas, subtarefas, listas, tags, labels, recorrência
+│   ├── Habits/      hábitos, logs, streaks, heatmap
+│   ├── Calendar/    eventos
+│   ├── Notes/       notas e tags de notas
+│   ├── Bookmarks/   coleções e links
+│   ├── Prices/      categorias, lojas, produtos, registros de preço, compras, vendas, patrimônio
+│   ├── Purchases/   itens de compra e sessões de compra (shopping)
+│   ├── Reports/     dashboard e produtividade
+│   └── Shared/      DTOs compartilhados
+├── Console/Commands/  rotinas agendadas, release-migrate, recuperação financeira
+├── Models/User.php    UUID + SoftDeletes + locale/timezone/settings
+├── Traits/ApiResponse success() created() noContent() paginatedSuccess() error()
+└── Providers/         AppServiceProvider — policies registradas manualmente
 ```
 
-Cada domínio segue a estrutura:
+Cada domínio segue (nem todo domínio tem todas as pastas):
 ```
 DomainName/
 ├── Controllers/    Thin — apenas HTTP in/out, delega ao Service
-├── Services/       Orquestra Actions para operações complexas
-├── Actions/        Uma responsabilidade, reutilizável
+├── Services/       Casos de uso e cálculos (ex.: FinanceReportService, CardOverview)
+├── Actions/        Uma responsabilidade, reutilizável (ex.: CreateTransactionAction)
 ├── Models/         Eloquent + scopes + relationships
 ├── DTOs/           final readonly class, fromArray() factory
-├── Requests/       Extends BaseFormRequest, rules() method
+├── Requests/       Extends BaseFormRequest, rules()
 ├── Resources/      Extends JsonResource, toArray()
-├── Policies/       view/update/delete — checam user_id ownership
-└── Enums/          Backed string enums com label() helper
+├── Policies/       view/update/delete — checam user_id
+└── Enums/          Backed string enums com label()
 ```
+
+### Domínio Finance — regras que importam
+
+- **Transação:** `type` income/expense/transfer, `status` confirmed/pending. Só confirmada mexe no saldo
+  da conta. Séries fixas usam `recurrence_group_id` + `recurrence_config`; parcelas, `installment_group_id`.
+  Escopos de edição/exclusão de série: `this_only`, `this_and_future`, `all` (= só as futuras não pagas).
+- **Cartão:** compra no cartão não debita conta; tem `card_id`, `statement_month`, `statement_due_on`.
+  `CardCycle` calcula ciclos; `CardOverview` devolve fatura a pagar, aberta, próximas e limite real.
+  Compras do cartão viram gasto na data (`finance:realize-card-charges`).
+- **Visão econômica:** relatórios usam a parte própria (`economic_kind`, `economic_*_cents`): reembolso
+  não é receita, despesa dividida conta só a sua parte, pagamento de fatura não é despesa.
+- **Reserva:** conta `AccountType::Investment` é "Guardado" (caixinha): fica fora do saldo disponível e do
+  previsto; `saved`/`reserved` no relatório = transferências líquidas para reservas + aportes em metas.
+- **Conferência de saldo:** `balance-observations` (tabela `account_balance_checkpoints`); a primeira conferência de uma conta sem saldo inicial
+  conferido vira a abertura dela. `AccountBalanceHistory` reconstrói saldos por data.
+- **Registros importados** (`import_batch_id`) ficam travados em valor/data/conta/descrição; categoria,
+  tags e notas podem mudar.
+- **Datas "hoje"** sempre pelo fuso do usuário (`UserClock`), nunca `now()` cru.
+- Consultas financeiras não escrevem dados; a manutenção fica nos comandos agendados.
 
 ## Padrões Obrigatórios
 
 ### Response Envelope
-Todas as respostas seguem este formato:
 ```json
 { "success": true, "data": {}, "message": "", "meta": {} }
 { "success": false, "message": "", "errors": {} }
 ```
-
-Usar sempre os helpers do `ApiResponse` trait:
-- `$this->success($data, $message)` — 200
-- `$this->created($data, $message)` — 201
-- `$this->noContent()` — 204
-- `$this->paginatedSuccess($collection)` — 200 com meta de paginação
-- `$this->error($message, $code)` — 4xx/5xx
+Helpers do trait `ApiResponse`: `success()` 200 · `created()` 201 · `noContent()` 204 ·
+`paginatedSuccess()` 200 com meta · `error($message, $code)` 4xx/5xx.
 
 ### Models
-- UUID via `HasUuids` em todas entidades principais
-- `SoftDeletes` em todas entidades principais
+- UUID via `HasUuids` e `SoftDeletes` nas entidades principais
 - Scopes no model: `scopeForUser()`, `scopeActive()` etc.
 - Casts tipados: enums, decimal, boolean, array, datetime
 
 ### Controllers
-- **Thin controllers** — apenas validar, autorizar, chamar service, retornar
+- **Thin** — validar, autorizar, chamar service, retornar
 - Injeção via construtor (`private readonly ServiceName $service`)
 - `$this->authorize('action', $model)` para policies
-- Nunca lógica de negócio no controller
 
 ### Services
-- Orquestram Actions para casos de uso complexos
-- Retornam Models ou Collections, nunca arrays brutos de DB
-- Construtores com Actions injetadas
+- Orquestram Actions; retornam Models, Collections ou arrays de relatório já calculados
+- Transações de banco (`DB::transaction`) quando o caso de uso grava em mais de uma tabela
 
 ### DTOs
 ```php
@@ -84,95 +127,101 @@ final readonly class ExampleDTO
 }
 ```
 
-### Requests (Form Requests)
-- Sempre extends `BaseFormRequest`
-- `authorize()` retorna `true` (autorização nas Policies)
-- Regras com `'sometimes'` para updates parciais
+### Requests
+- Sempre extends `BaseFormRequest`; `authorize()` retorna `true` (autorização nas Policies)
+- `'sometimes'` para updates parciais
 
 ### Migrations
-- `$table->uuid('id')->primary()` — nunca auto-increment em entidades principais
-- `$table->foreignUuid('user_id')->constrained()->cascadeOnDelete()`
-- Índices compostos em colunas frequentemente filtradas juntas
-- `decimal(15, 2)` para valores monetários — nunca float
+- `$table->uuid('id')->primary()`; `$table->foreignUuid('user_id')->constrained()->cascadeOnDelete()`
+- Índices compostos nas colunas filtradas juntas
+- `decimal(15, 2)` para valores em reais; colunas `*_cents` (inteiro) nas tabelas novas de cartão/recuperação — nunca float
+- **Toda migration nova precisa ir para `database/release-approved-migrations.txt`** para rodar em produção (ver Deploy)
 
 ### Policies
 Registradas em `AppServiceProvider::boot()`. Nunca depender de auto-discovery (paths não-padrão).
 
-## Comandos de Desenvolvimento
+## Comandos
 
 ```bash
-# Desenvolvimento
-composer dev
+# Local (a partir de expenses-control-backend)
+../.runtime/php84/php.exe artisan serve --env=local --port=8001
+../.runtime/php84/php.exe artisan migrate --env=local
 
-# Database
-php artisan migrate
-php artisan migrate:fresh --seed
-php artisan migrate:rollback
-
-# Testes
-php artisan test
-php artisan test --filter=NomeDoTeste
+# Testes (banco local isolado)
+../.runtime/php84/php.exe vendor/bin/phpunit -c phpunit.recovery.xml [arquivo]
+php artisan test --filter=NomeDoTeste        # phpunit.xml: banco productivy_test em 127.0.0.1
 
 # Qualidade
 ./vendor/bin/pint          # formata
 ./vendor/bin/pint --test   # verifica sem alterar
-
-# Tinker
-php artisan tinker
 ```
+
+### Comandos artisan do projeto
+
+| Comando | O que faz |
+|---|---|
+| `finance:extend-recurrences [--prune]` | Mantém as séries fixas na janela rolante (agendado 03:00 UTC) |
+| `finance:realize-card-charges` | Confirma compras/parcelas/assinaturas do cartão cuja data chegou (03:05 UTC) |
+| `tasks:roll-recurrences` | Materializa a ocorrência de hoje das tarefas recorrentes (03:10 UTC) |
+| `app:release-migrate` | No deploy, roda só as migrations aprovadas |
+| `finance:merge-duplicate-categories [--dry-run]` | Funde categorias duplicadas |
+| `purchases:prune-orphan-items [--dry-run]` | Remove itens de compra órfãos |
+| `finance:recover` / `finance:rollback-recovery` | Importação e reversão auditadas (ver `tools/recovery/README.md`) |
+
+## Deploy (Railway, `Dockerfile`)
+
+O container roda: `optimize` → `app:release-migrate` → catch-up (`finance:extend-recurrences`,
+`finance:realize-card-charges`) → `schedule:work` em segundo plano → `artisan serve`.
+O agendador roda no próprio container (não há cron separado).
+
+Release com migration: (1) backup completo de produção e restauração conferida; (2) listar a migration em
+`database/release-approved-migrations.txt` no mesmo commit; (3) publicar e conferir que rodou; (4) limpar a
+lista na release seguinte.
 
 ## Rotas API — `/api/v1/`
 
-Todas as rotas autenticadas usam `middleware('auth:sanctum')`.
+Rotas autenticadas usam `auth:sanctum`. Lista completa em `docs/API.md`.
 
-| Módulo | Prefix | Auth |
-|--------|--------|------|
-| Auth | `/api/v1/auth` | público: register, login; privado: logout, me |
-| Dashboard | `/api/v1/dashboard` | ✅ |
-| Tasks | `/api/v1/tasks` | ✅ |
-| Habits | `/api/v1/habits` | ✅ |
-| Finance | `/api/v1/finance` | ✅ |
-| Calendar | `/api/v1/calendar` | ✅ |
-| Reports | `/api/v1/reports` | ✅ |
+| Módulo | Prefixo |
+|--------|---------|
+| Auth | `/auth` (register, login, forgot/reset e Google públicos; logout, me, profile, password, settings privados) |
+| Dashboard | `/dashboard` |
+| Finanças | `/finance` (accounts, cards, transactions, categories, tags, reports, budgets, goals, balance) |
+| Tarefas | `/tasks`, `/task-labels`, `/task-lists`, `/task-tags` |
+| Hábitos | `/habits` |
+| Agenda | `/calendar` |
+| Relatórios | `/reports` |
+| Notas | `/notes`, `/note-tags` |
+| Bookmarks | `/bookmarks` |
+| Preços | `/prices` |
+| Compras | `/purchases`, `/shopping` |
 
 ## Adicionando um Novo Domínio
 
 1. Criar estrutura em `app/Domains/NovoDominio/`
-2. Criar migration com UUID PK e índices
+2. Criar migration com UUID PK e índices (e aprová-la para o deploy)
 3. Registrar Policy em `AppServiceProvider`
 4. Adicionar rotas em `routes/api.php` dentro do grupo `v1 + auth:sanctum`
-5. Criar orchestrator em `.tasks/`
+5. Testes de feature (ver abaixo) e documentação (`README.md`, `docs/API.md`)
 
 ## TDD — Regras para Novas Features
 
-**Toda nova feature de backend DEVE incluir testes de regressão no mesmo sprint/commit.**
-
-### Fluxo obrigatório
+**Toda nova feature de backend inclui testes de regressão no mesmo commit.**
 
 1. Implementar a feature (migration, model, action, service, controller, resource)
-2. Criar factory para o novo model em `database/factories/` — padrão:
-   ```php
-   class NewModelFactory extends Factory
-   {
-       protected $model = NewModel::class;
-       public function definition(): array { ... }
-   }
-   ```
-3. Adicionar `protected static function newFactory(): NewModelFactory` no model (necessário para DDD — Laravel não encontra factories em `app/Domains/*/Models/` automaticamente)
-4. Criar `tests/Feature/{Domain}/NewModelTest.php` cobrindo:
-   - Happy path (CRUD básico funciona)
-   - User isolation (usuário só vê seus próprios dados)
-   - Authorization (usuário não acessa dados de outro — assertForbidden 403)
-   - Validação de input (campos inválidos → assertUnprocessable 422)
-   - Qualquer lógica de negócio crítica da feature
-5. Rodar os testes antes do commit: `php artisan test --filter=NewModelTest`
-
-### Estrutura dos testes
+2. Criar factory em `database/factories/` e `protected static function newFactory()` no model
+   (Laravel não encontra factories de `app/Domains/*/Models/` sozinho)
+3. Criar `tests/Feature/{Domain}/NomeTest.php` cobrindo:
+   - Happy path
+   - Isolamento entre usuários
+   - Autorização (recurso de outro usuário → 403)
+   - Validação (input inválido → 422)
+   - Regra de negócio crítica (estado no banco)
+4. Rodar os testes antes do commit
 
 ```php
 namespace Tests\Feature\{Domain};
 
-use App\Domains\{Domain}\Models\{Model};
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -180,14 +229,6 @@ use Tests\TestCase;
 class {Model}Test extends TestCase
 {
     use RefreshDatabase;
-
-    public function test_user_can_create_{model}(): void
-    {
-        $user = User::factory()->create();
-        $this->actingAs($user, 'sanctum')
-            ->postJson('/api/v1/{endpoint}', [...])
-            ->assertCreated();
-    }
 
     public function test_user_cannot_access_another_users_{model}(): void
     {
@@ -201,18 +242,8 @@ class {Model}Test extends TestCase
 }
 ```
 
-### Cobertura mínima por feature
-
-| Cenário | Assertion esperada |
-|---------|-------------------|
-| Criar recurso | `assertCreated()` + `assertDatabaseHas` |
-| Listar recursos (isolação) | `meta.total` correto |
-| Acessar recurso alheio | `assertForbidden()` (403) |
-| Input inválido | `assertUnprocessable()` (422) |
-| Lógica crítica de negócio | assertar o estado no banco |
-
 ### Banco de teste
 
-- Conexão: MySQL `productivy_test` (configurado em `phpunit.xml`)
-- Usar `RefreshDatabase` em todos os tests de feature
-- Nunca usar SQLite (driver não disponível neste ambiente)
+- Só MySQL local (nunca SQLite; o driver não está disponível)
+- `RefreshDatabase` em todos os testes de feature
+- Testes financeiros em `tests/Feature/Finance/` (relatórios, cartões, faturas, reservas, recorrência, defeitos da auditoria)

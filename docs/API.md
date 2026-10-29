@@ -1,6 +1,27 @@
 # API Reference
 
-Base URL: `http://localhost:8000/api/v1`
+Base URL local: `http://localhost:8001/api/v1` · produção: `https://vault-api.matheus-dev.com/api/v1`
+
+> Mantenha este arquivo em dia: todo commit que cria, remove ou muda uma rota ou um campo de resposta
+> atualiza esta página no mesmo commit. A lista completa de rotas está em `routes/api.php`.
+
+## Índice de rotas
+
+🔒 = exige `Authorization: Bearer {token}`.
+
+| Módulo | Rotas |
+|---|---|
+| Auth | `POST auth/register` · `POST auth/login` · `POST auth/forgot-password` · `POST auth/reset-password` (throttle 10/min) · `GET auth/google/redirect` · `GET auth/google/callback` · 🔒 `POST auth/logout` · `POST auth/logout-all` · `GET auth/me` · `PATCH auth/profile` · `PATCH auth/password` · `PATCH auth/settings` |
+| Dashboard 🔒 | `GET dashboard` |
+| Tarefas 🔒 | `tasks` (CRUD) · `POST tasks/reorder` · `PATCH tasks/{id}/complete\|archive\|unarchive` · `GET tasks/{id}/recurrence-history` · `tasks/{id}/subtasks` · `task-labels` · `task-lists` · `task-tags` |
+| Hábitos 🔒 | `habits` (CRUD) · `GET habits/today` · `PATCH habits/{id}/archive\|unarchive` · `POST\|DELETE habits/{id}/log` · `GET habits/{id}/stats` · `GET habits/{id}/heatmap` |
+| Finanças 🔒 | ver seção **Finance** |
+| Agenda 🔒 | `calendar` (CRUD) · `GET calendar/upcoming` |
+| Relatórios 🔒 | `GET reports/weekly-productivity` · `GET reports/habits-log-count` |
+| Notas 🔒 | `notes` (CRUD) · `PATCH notes/{id}/pin\|favorite\|archive\|unarchive` · `note-tags` |
+| Bookmarks 🔒 | `bookmarks/collections` (CRUD + reorder) · `bookmarks/collections/{id}/links` (+ reorder) · `bookmarks/links/{id}` · `PATCH bookmarks/links/{id}/favorite` |
+| Preços 🔒 | `GET prices/dashboard\|patrimony\|compare` · `GET prices/products/{id}/price-history` · `prices/categories\|stores\|products\|price-records\|purchases\|sales` (CRUD) |
+| Compras 🔒 | `purchases` (CRUD) · `shopping/sessions` (CRUD + finish/reopen) · `shopping/sessions/{id}/items` · `shopping/items/{id}` · `GET shopping/items/frequent` |
 
 ## Autenticação
 
@@ -146,6 +167,8 @@ Dados consolidados para a tela inicial.
     },
     "finance": {
       "total_balance": 5420.50,
+      "reserve_balance": 500.00,
+      "month_reserved": 500.00,
       "month_income": 8000.00,
       "month_expenses": 3200.00,
       "month_balance": 4800.00,
@@ -334,18 +357,52 @@ Mapa de calor de atividade.
 
 ## Finance
 
-### GET /finance/balance 🔒
-Saldo consolidado de todas as contas.
+Todas as rotas abaixo ficam em `/finance` e exigem token 🔒. Valores com sufixo `_cents` são inteiros em
+centavos; os demais são reais (`decimal`). "Hoje" é sempre o dia no fuso do usuário.
 
-**Response:**
+### Rotas
+
+| Grupo | Rotas |
+|---|---|
+| Saldo | `GET balance` · `GET balance/historical?year=&month=` |
+| Contas | `accounts` (CRUD) · `GET accounts/movements?year=&month=` · `GET accounts/{id}/balance-at?date=` · `GET\|POST accounts/{id}/balance-observations` |
+| Cartões | `GET cards` · `POST cards` · `POST accounts/{id}/cards` · `GET\|PUT\|PATCH\|DELETE cards/{id}` · `GET cards/{id}/overview` · `GET cards/{id}/statement?cycle=` · `GET cards/{id}/statement-payment` · `POST cards/{id}/pay-statement` |
+| Transações | `transactions` (CRUD) · `PATCH transactions/{id}/confirm` · `PATCH transactions/confirm-batch` |
+| Categorias / tags | `GET\|POST categories` · `PUT\|DELETE categories/{id}` · `GET\|POST tags` · `PUT\|DELETE tags/{id}` |
+| Relatórios | `GET reports/monthly` · `reports/yearly` · `reports/cashflow` · `reports/series` · `reports/categories` · `reports/category-transactions` · `reports/balance` |
+| Orçamentos | `GET budgets` · `GET budgets/previous` · `POST budgets` · `PUT\|DELETE budgets/{id}` |
+| Metas | `GET goals` · `POST goals` · `PUT goals/{id}` · `POST goals/{id}/complete` · `DELETE goals/{id}` |
+
+### Endpoints da tela Visão Geral
+
+A Visão Geral do frontend (referência de design do produto) é montada com estes endpoints:
+
+| Card | Endpoint |
+|---|---|
+| Card do mês, categorias | `GET reports/monthly` |
+| Saldo "Nas contas" | `GET accounts` (soma das contas ativas que não são reserva) |
+| Saldo "No fim do mês" | `GET balance/historical` |
+| A confirmar | `GET transactions?status=pending&end_date=…` · `PATCH transactions/{id}/confirm` · `PATCH transactions/confirm-batch` |
+| Cartões | `GET cards/{id}/overview` |
+| Transações de uma categoria | `GET reports/category-transactions` |
+| Lista de transações | `GET transactions` |
+
+---
+
+### GET /finance/balance 🔒
+Saldo consolidado das contas ativas. `total` não inclui as contas de reserva (tipo `investment`);
+elas somam em `reserve`.
+
 ```json
 {
   "success": true,
   "data": {
-    "total": 15420.50,
-    "by_currency": { "BRL": 15420.50 },
+    "total": 2540.04,
+    "reserve": 500.00,
+    "by_currency": { "BRL": 2540.04 },
     "accounts": [
-      { "id": "uuid", "name": "Nubank", "balance": 5420.50 }
+      { "id": "uuid", "name": "Nubank", "balance": 540.04, "is_reserve": false },
+      { "id": "uuid", "name": "Caixinha Nubank", "balance": 500.00, "is_reserve": true }
     ]
   }
 }
@@ -353,10 +410,34 @@ Saldo consolidado de todas as contas.
 
 ---
 
-### POST /finance/accounts 🔒
-Criar conta bancária.
+### GET /finance/balance/historical 🔒
+Saldo no fim do mês pedido. **Query:** `?year=2026&month=10` (padrão: mês atual).
 
-**Body:**
+```json
+{
+  "success": true,
+  "data": {
+    "balance": 2540.04,
+    "projected_balance": 1830.20,
+    "card_due": 722.21,
+    "card_statements": [
+      { "card_id": "uuid", "card_name": "Nubank", "cycle": "2026-11", "due_on": "2026-11-20", "remaining_cents": 72221 }
+    ],
+    "unverified_accounts": ["uuid"],
+    "reserve_balance": 500.00,
+    "projected_reserve_balance": 500.00
+  }
+}
+```
+
+`projected_balance` = saldo + previstos do mês − faturas de cartão que vencem até o fim do mês.
+`unverified_accounts` lista contas somadas pelo saldo registrado, ainda sem saldo inicial conferido.
+
+---
+
+### POST /finance/accounts 🔒
+Criar conta.
+
 ```json
 {
   "name": "Nubank",
@@ -368,64 +449,135 @@ Criar conta bancária.
 }
 ```
 
-**Valores de `type`:** `checking` · `savings` · `investment` · `cash` · `wallet`
+**Valores de `type`:** `checking` · `savings` · `investment` (reserva / "Guardado") · `cash` · `wallet`
+
+### POST /finance/accounts/{id}/balance-observations 🔒
+"Conferir saldo". **Body:** `{ "date": "2026-10-19", "balance": "540.04", "evidence": "app do banco" }`.
+Resposta: `observed_cents`, `calculated_cents`, `difference_cents`, `opening_created` (a primeira conferência
+de uma conta sem abertura conferida vira a abertura).
+
+### GET /finance/accounts/movements 🔒
+Entradas e saídas de caixa de cada conta no mês: `[{ "account_id": "uuid", "in": 5000.00, "out": 3120.55 }]`.
 
 ---
 
-### POST /finance/transactions 🔒
-Criar transação. Suporta parcelamento.
+### GET /finance/transactions 🔒
+Lista paginada.
 
-**Body (simples):**
+| Param | Descrição |
+|---|---|
+| `type` | `income` · `expense` · `transfer` |
+| `status` | `confirmed` · `pending` |
+| `account_id`, `card_id`, `category_id` | filtros por UUID |
+| `month` + `year`, ou `start_date` + `end_date` | período |
+| `search` | busca na descrição |
+| `is_recurring` | `1` / `0` (fixas) |
+| `sort_by`, `sort_direction` | ordenação |
+| `per_page` | até 500 |
+
+### POST /finance/transactions 🔒
+Criar transação. Uma despesa vai para **uma conta ou um cartão**, nunca os dois.
+
 ```json
 {
   "type": "expense",
   "amount": 150.00,
   "description": "Supermercado",
-  "transaction_date": "2026-05-12",
+  "transaction_date": "2026-10-12",
   "account_id": "uuid",
   "category_id": "uuid"
 }
 ```
 
-**Body (parcelado):**
+Parcelada no cartão: troque `account_id` por `card_id` e informe `total_installments`.
+Data futura cria uma previsão (`status: pending`), que não mexe no saldo até ser confirmada.
+
+### PUT/DELETE /finance/transactions/{id} 🔒
+Em série fixa, `scope` (padrão `this_only`): na edição `this_only` · `this_and_future` · `all`
+(= só as ocorrências futuras não pagas); na exclusão `this_only` · `this_and_future` (o histórico pago fica).
+Registros importados de extrato aceitam só categoria, tags e notas.
+
+### PATCH /finance/transactions/{id}/confirm 🔒
+"Paguei / Recebi": confirma a previsão com o valor e a data reais (data não pode ser futura).
+
+### PATCH /finance/transactions/confirm-batch 🔒
+**Body:** `{ "ids": ["uuid", "uuid"] }` (1 a 100) — confirma várias previsões já vencidas. Ids de outro usuário são ignorados.
+
+---
+
+### GET /finance/cards/{id}/overview 🔒
+Resumo real do cartão.
+
 ```json
 {
-  "type": "expense",
-  "amount": 1200.00,
-  "description": "iPhone",
-  "transaction_date": "2026-05-12",
-  "card_id": "uuid",
-  "category_id": "uuid",
-  "total_installments": 12
+  "success": true,
+  "data": {
+    "card_id": "uuid",
+    "today": "2026-10-29",
+    "open_cycle": "2026-12",
+    "to_pay": [
+      { "cycle": "2026-11", "start_on": "2026-10-13", "closing_on": "2026-11-12", "due_on": "2026-11-20",
+        "status": "closed", "charges_cents": 72221, "paid_cents": 0, "remaining_cents": 72221 }
+    ],
+    "open": { "cycle": "2026-12", "status": "open", "charges_cents": 18000, "...": "..." },
+    "upcoming": [ { "cycle": "2027-01", "charges_cents": 10757, "...": "..." } ],
+    "upcoming_total_cents": 10757,
+    "limit_cents": 300000,
+    "used_cents": 100978,
+    "available_cents": 199022
+  }
 }
 ```
 
-**Valores de `type`:** `income` · `expense` · `transfer`
+**`status` da fatura:** `future` · `open` · `closed` · `partial` · `overdue` · `paid` · `empty` · `historical`.
+O limite usado inclui faturas a pagar, a aberta e parcelas futuras (previsões de assinatura não ocupam limite).
+
+### POST /finance/cards/{id}/pay-statement 🔒
+Paga uma fatura a partir de uma conta (gera a transação de pagamento, que não conta como despesa nos relatórios).
 
 ---
 
 ### GET /finance/reports/monthly 🔒
-Resumo financeiro mensal.
+Resumo do mês. **Query:** `?year=2026&month=10`. Despesas pela parte própria; reembolso não conta como receita.
 
-**Query:** `?year=2026&month=5`
-
-**Response:**
 ```json
 {
   "success": true,
   "data": {
     "year": 2026,
-    "month": 5,
-    "income": 8000.00,
+    "month": 10,
+    "income": 5000.00,
     "expenses": 3200.00,
-    "balance": 4800.00,
+    "saved": 500.00,
+    "reserved": 500.00,
+    "balance": 1800.00,
+    "pending_income": 2500.00,
+    "pending_expenses": 410.00,
+    "pending_saved": 0,
     "transactions_count": 42,
+    "largest_expense": { "id": "uuid", "description": "Aluguel", "amount": 1200.00, "transaction_date": "2026-10-05", "category": "Moradia" },
     "expenses_by_category": [
-      { "category": "Alimentação", "total": 1200.00, "percentage": 37.5 }
+      { "category_id": "uuid", "category": "Moradia", "color": "#5CA8F5", "total": 1393.05, "count": 3, "percentage": 43.5 }
+    ],
+    "income_by_category": [
+      { "category_id": "uuid", "category": "Salário", "color": "#34d399", "total": 5000.00, "count": 2, "percentage": 100 }
     ]
   }
 }
 ```
+
+- `saved` = aportes em metas + transferências líquidas para contas de reserva (poupança, não gasto); `reserved` = só a parte das reservas.
+- `pending_*` = previsões do mês ainda não confirmadas.
+
+### GET /finance/reports/category-transactions 🔒
+Transações de uma categoria no mês (paginado). **Query:** `year`, `month`, `type` (`income`/`expense`), `category_id` (vazio = sem categoria), `page`.
+
+### GET /finance/reports/series 🔒
+Receitas e despesas por período. **Query:** `start_date`, `end_date`, `group` (`day`/`month`).
+Resposta: `[{ "period": "2026-10", "income": 5000.00, "expenses": 3200.00 }]`.
+
+### GET /finance/reports/categories 🔒
+Gasto confirmado por categoria entre duas datas. **Query:** `start_date`, `end_date`.
 
 ---
 

@@ -8,14 +8,21 @@ O backend segue uma arquitetura Domain-Driven Design (DDD) leve, organizada em d
 
 ```
 app/Domains/
-├── Auth/           Autenticação e gerenciamento de sessão
-├── Tasks/          Gerenciamento de tarefas
+├── Auth/           Autenticação (e-mail/senha, Google), perfil e preferências
+├── Finance/        Controle financeiro: contas, cartões/faturas, transações, orçamentos, metas, relatórios
+├── Tasks/          Tarefas, listas, tags, subtarefas, recorrência
 ├── Habits/         Tracking de hábitos
-├── Finance/        Controle financeiro (inclui metas financeiras)
 ├── Calendar/       Eventos e agenda
-├── Reports/        Dashboard e relatórios consolidados
+├── Notes/          Notas
+├── Bookmarks/      Coleções de links
+├── Prices/         Histórico de preços e patrimônio
+├── Purchases/      Itens e sessões de compra
+├── Reports/        Dashboard e relatórios de produtividade
 └── Shared/         Código compartilhado entre domínios
 ```
+
+O módulo principal é **Finance**. A tela Visão Geral do frontend é a referência de design do produto
+e consome os relatórios e resumos calculados aqui (ver seção "Domínio Finance").
 
 ## Estrutura Interna de Cada Domínio
 
@@ -242,12 +249,42 @@ enum TaskStatus: string
 - **PKs:** UUID via `$table->uuid('id')->primary()` + `HasUuids` no Model
 - **FKs:** `$table->foreignUuid('user_id')->constrained()->cascadeOnDelete()`
 - **Soft deletes:** Em todas as entidades principais
-- **Valores monetários:** `decimal(15, 2)` — nunca `float`
+- **Valores monetários:** `decimal(15, 2)` em reais; inteiros `*_cents` nas tabelas de cartão e recuperação — nunca `float`
 - **JSON:** `json` no MySQL
 - **Índices:** Compostos nas colunas mais filtradas juntas
 
 ### Atualização de Saldo
-`CreateTransactionAction` e `UpdateTransactionAction` atualizam automaticamente o `balance` da `BankAccount` após criar/editar/deletar transações.
+`CreateTransactionAction`, `UpdateTransactionAction` e `ConfirmTransactionAction` ajustam o `balance` da
+`BankAccount` (e da conta de destino em transferências) **só para transações confirmadas**. Previsões
+(`status = pending`) não mexem no saldo até serem confirmadas. Compras no cartão nunca debitam conta:
+entram na fatura e só o pagamento da fatura (`PayCardStatementAction`, que grava uma transação vinculada
+ao cartão e ao mês da fatura) sai da conta.
+
+## Domínio Finance
+
+| Peça | Responsabilidade |
+|---|---|
+| `TransactionService` + Actions | Criar, editar, confirmar e excluir transações (séries fixas, parcelas, escopo `this_only` / `this_and_future` / `all`) |
+| `RecurrenceSchedule` + `ExtendRecurringTransactionsAction` | Janela rolante das séries fixas (comando `finance:extend-recurrences`) |
+| `CardCycle` | Ciclo da fatura (fechamento/vencimento) de uma data |
+| `CardOverview` | Fatura a pagar, fatura aberta, próximas faturas e limite disponível real |
+| `CardStatementSummary` + `PayCardStatementAction` | Detalhe e pagamento de fatura (`card_statements`) |
+| `RealizeDueCardChargesAction` | Confirma compras do cartão na data delas (comando `finance:realize-card-charges`) |
+| `FinancialEffects` | Visão econômica: parte própria, reembolso, despesa dividida, pagamento de fatura |
+| `FinanceReportService` | Relatório mensal/anual, série, totais e transações por categoria, fluxo de caixa |
+| `AccountBalanceHistory` | Saldo de uma conta em uma data e saldo previsto do fim do mês |
+| `AccountMovements` | Entradas e saídas de caixa de cada conta no mês |
+| `BalanceObservationService` | "Conferir saldo" (`account_balance_checkpoints`); a primeira conferência vira a abertura |
+| `UserClock` | "Hoje" no fuso do usuário |
+| `RecoveryImporter` / `RecoveryPlan` / `RecoveryRecordGuard` | Importação auditada e reversível de extratos |
+
+Regras:
+- **Reserva (Guardado):** contas `AccountType::Investment` ficam fora do saldo disponível e do previsto.
+- **Saldo no fim do mês:** saldo atual + previstos do mês − faturas de cartão que vencem até lá.
+- **Relatórios** usam a parte própria das despesas e não contam reembolso como receita.
+- **Consultas não escrevem.** Manutenção de séries e compras de cartão fica nos comandos agendados
+  (`routes/console.php`), que também rodam no boot do container para recuperar dias perdidos.
+- **Registros importados** (`import_batch_id`) têm valor, data, conta e descrição travados.
 
 ## API Response Envelope
 
@@ -311,9 +348,10 @@ Configurado em `bootstrap/app.php`:
 ### Adicionando um Novo Domínio
 
 1. Criar `app/Domains/NovoDominio/` com a estrutura padrão
-2. Criar migration com UUID PK
+2. Criar migration com UUID PK e listá-la em `database/release-approved-migrations.txt` para o deploy
 3. Registrar Policy em `AppServiceProvider::boot()`
 4. Adicionar rotas em `routes/api.php`
+5. Testes de feature e documentação (`README.md`, `docs/API.md`, este arquivo) no mesmo commit
 
 ### Adicionando Notificações (Futuro)
 - Criar `app/Domains/Notifications/`
@@ -323,4 +361,4 @@ Configurado em `bootstrap/app.php`:
 ### Adicionando Google Calendar (Futuro)
 - `CalendarEvent.source` enum já tem case `Google`
 - `CalendarEvent.external_id` para armazenar ID do Google
-- `laravel/socialite` já instalado para OAuth
+- `laravel/socialite` já é usado no login com Google

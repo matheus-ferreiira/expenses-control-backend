@@ -1,246 +1,126 @@
-# Productivity Control — Backend API
+# VaultOS — Backend API
 
-API REST para aplicação pessoal de controle financeiro, tarefas, hábitos, metas e produtividade.
+API REST do VaultOS: finanças pessoais (módulo principal), tarefas, hábitos, agenda, notas, bookmarks,
+preços e compras. O frontend fica em [`../expenses-control-frontend`](../expenses-control-frontend/README.md).
 
 ## Stack
 
 | Tecnologia | Versão |
 |-----------|--------|
-| PHP | ^8.3 |
+| PHP | ^8.3 (local: PHP 8.4 portátil em `../.runtime/php84`) |
 | Laravel | ^12.0 |
-| MySQL | 8.0+ |
+| MySQL | 8 |
 | Sanctum | ^4.0 (token auth) |
-| Socialite | ^5.0 (Google OAuth - futuro) |
+| Socialite | ^5.0 (login com Google) |
 
-## Pré-requisitos
+## Ambientes
 
-- PHP 8.3+
-- Composer
-- MySQL 8.0+
-- Node.js 20+ (para assets)
+| Arquivo | Banco | Uso |
+|---|---|---|
+| `.env` | MySQL local `expenses_control` | padrão (cópia de `.env.local`) |
+| `.env.local` | MySQL local `expenses_control` | local explícito |
+| `.env.production` | Railway | só com `--env=production`, com cuidado |
 
-## Instalação
+Os três são ignorados pelo Git. Detalhes em [`../README.md`](../README.md).
+
+## Executar localmente
 
 ```bash
-# 1. Instalar dependências
 composer install
-
-# 2. Configurar ambiente
-cp .env.example .env
-php artisan key:generate
-
-# 3. Configurar banco no .env
-# DB_CONNECTION=mysql
-# DB_HOST=127.0.0.1
-# DB_PORT=3306
-# DB_DATABASE=productivy
-# DB_USERNAME=root
-# DB_PASSWORD=
-
-# 4. Criar banco e rodar migrations
-php artisan migrate
-
-# 5. Iniciar servidor de desenvolvimento
-composer dev
+../.runtime/php84/php.exe artisan config:clear
+../.runtime/php84/php.exe artisan migrate --env=local
+../.runtime/php84/php.exe artisan serve --env=local --port=8001
 ```
+
+API local: `http://localhost:8001/api/v1`. Produção: `https://vault-api.matheus-dev.com/api/v1`.
 
 ## Estrutura de Domínios
 
 ```
 app/Domains/
-├── Auth/       Autenticação (register, login, forgot/reset password)
-├── Tasks/      Tarefas com subtasks, labels, recorrência, arquivo
+├── Auth/       Autenticação (e-mail/senha, Google), perfil, senha, preferências
+├── Finance/    Contas, cartões e faturas, transações, categorias, tags, orçamentos, metas, relatórios
+├── Tasks/      Tarefas com subtarefas, listas, tags, labels, recorrência
 ├── Habits/     Hábitos com streaks, heatmap, estatísticas
-├── Finance/    Contas, cartões, transações, categorias, metas, relatórios
-├── Calendar/   Agenda (preparado para Google Calendar)
-├── Reports/    Dashboard consolidado e relatórios
+├── Calendar/   Agenda
+├── Notes/      Notas e tags
+├── Bookmarks/  Coleções de links
+├── Prices/     Histórico de preços, compras, vendas e patrimônio
+├── Purchases/  Itens e sessões de compra
+├── Reports/    Dashboard e produtividade
 └── Shared/     DTOs compartilhados
 ```
 
-Cada domínio contém: `Controllers · Services · Actions · Models · DTOs · Requests · Resources · Policies · Enums`
+Cada domínio contém (conforme precisa): `Controllers · Services · Actions · Models · DTOs · Requests · Resources · Policies · Enums`.
+Arquitetura em [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); endpoints em [`docs/API.md`](docs/API.md).
 
-## API
+## Finanças em resumo
 
-Base URL: `http://localhost:8000/api/v1`
+A tela **Visão Geral** do frontend (referência de design do produto) é montada com:
 
-### Autenticação
+| Card da tela | Endpoint |
+|---|---|
+| Card do mês e categorias | `GET /finance/reports/monthly?year=&month=` |
+| Saldo "Nas contas" / "No fim do mês" | `GET /finance/accounts` + `GET /finance/balance/historical?year=&month=` |
+| A confirmar | `GET /finance/transactions?status=pending&end_date=…` + `PATCH /finance/transactions/{id}/confirm` / `confirm-batch` |
+| Cartões | `GET /finance/cards/{id}/overview` |
+| Transações de uma categoria | `GET /finance/reports/category-transactions` |
+| Lista de transações | `GET /finance/transactions` (filtros e paginação) |
 
-```
-POST  /auth/register         Criar conta
-POST  /auth/login            Login → retorna Bearer token
-POST  /auth/logout           Logout (token atual)
-POST  /auth/logout-all       Logout em todos os dispositivos
-GET   /auth/me               Dados do usuário autenticado
-POST  /auth/forgot-password  Enviar link de reset
-POST  /auth/reset-password   Resetar senha
-```
-
-### Dashboard
-
-```
-GET   /dashboard             Dados consolidados (tasks + habits + finance + goals + calendar)
-```
-
-### Tarefas
-
-```
-GET    /tasks                Lista com filtros (status, priority, label, due_date, search)
-POST   /tasks                Criar tarefa
-GET    /tasks/{id}           Detalhes
-PUT    /tasks/{id}           Atualizar
-DELETE /tasks/{id}           Deletar (soft)
-PATCH  /tasks/{id}/complete  Marcar como concluída
-PATCH  /tasks/{id}/archive   Arquivar
-PATCH  /tasks/{id}/unarchive Desarquivar
-POST   /tasks/reorder        Reordenar (drag & drop)
-
-POST   /tasks/{id}/subtasks         Criar subtask
-PUT    /tasks/{id}/subtasks/{sid}   Atualizar subtask
-DELETE /tasks/{id}/subtasks/{sid}   Deletar subtask
-
-GET    /task-labels          Listar labels
-POST   /task-labels          Criar label
-PUT    /task-labels/{id}     Atualizar
-DELETE /task-labels/{id}     Deletar
-```
-
-### Hábitos
-
-```
-GET    /habits               Lista paginada
-POST   /habits               Criar hábito
-GET    /habits/today         Hábitos do dia + status de conclusão
-GET    /habits/{id}          Detalhes
-PUT    /habits/{id}          Atualizar
-DELETE /habits/{id}          Deletar (soft)
-PATCH  /habits/{id}/archive  Arquivar
-PATCH  /habits/{id}/unarchive Desarquivar
-POST   /habits/{id}/log      Registrar conclusão do dia
-DELETE /habits/{id}/log      Remover registro do dia
-GET    /habits/{id}/stats    Estatísticas (streak, completion rate, etc.)
-GET    /habits/{id}/heatmap  Heatmap de atividade (padrão 365 dias)
-```
-
-### Financeiro
-
-```
-GET  /finance/balance              Saldo consolidado de todas as contas
-
-GET    /finance/accounts           Listar contas
-POST   /finance/accounts           Criar conta
-GET    /finance/accounts/{id}      Detalhes
-PUT    /finance/accounts/{id}      Atualizar
-DELETE /finance/accounts/{id}      Deletar
-
-POST   /finance/accounts/{id}/cards Criar cartão vinculado à conta
-GET    /finance/cards              Listar cartões
-GET    /finance/cards/{id}         Detalhes
-PUT    /finance/cards/{id}         Atualizar
-DELETE /finance/cards/{id}         Deletar
-
-GET    /finance/transactions       Lista com filtros avançados
-POST   /finance/transactions       Criar transação (suporta parcelamento)
-GET    /finance/transactions/{id}  Detalhes
-PUT    /finance/transactions/{id}  Atualizar
-DELETE /finance/transactions/{id}  Deletar
-
-GET  /finance/categories           Listar categorias
-POST /finance/categories           Criar categoria
-PUT  /finance/categories/{id}      Atualizar
-DELETE /finance/categories/{id}    Deletar
-
-GET  /finance/reports/monthly      Resumo mensal (?year=&month=)
-GET  /finance/reports/yearly       Resumo anual (?year=)
-GET  /finance/reports/cashflow     Fluxo de caixa (?start_date=&end_date=)
-```
-
-### Agenda
-
-```
-GET    /calendar             Eventos no período (?start_date=&end_date=)
-POST   /calendar             Criar evento
-GET    /calendar/upcoming    Próximos N dias (?days=7)
-GET    /calendar/{id}        Detalhes
-PUT    /calendar/{id}        Atualizar
-DELETE /calendar/{id}        Deletar
-```
-
-### Relatórios
-
-```
-GET  /reports/weekly-productivity   Resumo semanal de produtividade
-```
+Regras de negócio principais (saldo, cartões, reservas, visão econômica) estão no `CLAUDE.md`.
 
 ## Formato de Resposta
-
-Todas as respostas seguem o envelope padrão:
 
 ```json
 {
   "success": true,
   "data": {},
   "message": "Operation successful",
-  "meta": {
-    "current_page": 1,
-    "last_page": 5,
-    "per_page": 15,
-    "total": 73
-  }
+  "meta": { "current_page": 1, "last_page": 5, "per_page": 15, "total": 73 }
 }
 ```
 
 Erros:
 ```json
-{
-  "success": false,
-  "message": "Validation failed",
-  "errors": {
-    "email": ["The email field is required."]
-  }
-}
+{ "success": false, "message": "Validation failed", "errors": { "email": ["The email field is required."] } }
 ```
 
 ## Banco de Dados
 
-Migrations em ordem de criação:
+66 migrations em `database/migrations/`. Convenções: PK UUID, `SoftDeletes` nas entidades principais,
+`decimal(15,2)` para valores em reais e inteiros `*_cents` nas tabelas de cartão/recuperação.
 
-| # | Tabela | Descrição |
-|---|--------|-----------|
-| 000000 | users | UUID PK, locale, timezone, settings JSONB |
-| 000002 | tasks | UUID PK, SoftDeletes, índices compostos |
-| 000003 | task_labels | Labels de tarefas por usuário |
-| 000004 | task_label_task | Pivot M2M tasks ↔ labels |
-| 000005 | subtasks | Subtarefas com posição |
-| 000006 | habits | Hábitos com frequência e cor |
-| 000007 | habit_logs | Logs diários com unique(habit_id, date) |
-| 000008 | transaction_categories | Categorias por usuário ou globais |
-| 000009 | bank_accounts | Contas bancárias com saldo decimal(15,2) |
-| 000010 | credit_cards | Cartões vinculados a contas |
-| 000011 | transactions | Transações com suporte a parcelamento |
-| 000012 | goals | Metas com progress tracking |
-| 000013 | calendar_events | Eventos com source (manual/google/import) |
+Principais tabelas financeiras: `bank_accounts`, `credit_cards`, `transactions`, `transaction_categories`,
+`transaction_tags`, `budgets`, `budget_items`, `finance_goals`. A migration
+`2026_10_13_000001_create_financial_recovery_tables.php` criou `card_statements` (faturas),
+`account_balance_checkpoints` (conferências de saldo), `expense_allocations` (despesas divididas) e as
+tabelas de importação auditada (`import_batches`, `import_sources`, `transaction_sources`, `import_changes`).
 
-## Desenvolvimento
+## Comandos
 
 ```bash
-composer dev          # Inicia tudo: servidor, queue, logs, vite
-composer test         # PHPUnit
-./vendor/bin/pint     # Laravel Pint (formatação)
-php artisan tinker    # REPL
+composer dev                                                     # servidor, fila, logs e vite juntos
+../.runtime/php84/php.exe vendor/bin/phpunit -c phpunit.recovery.xml   # testes (banco vaultos_recovery_*)
+./vendor/bin/pint                                                # formatação
+php artisan tinker                                               # REPL
 ```
 
-## Roadmap
-
-- [ ] Google OAuth (Socialite já instalado)
-- [ ] Google Calendar sync
-- [ ] Notificações (jobs + queues já configurados)
-- [ ] WebSockets (broadcasting)
-- [ ] App mobile (tokens Sanctum já funcionam)
-- [ ] Analytics e relatórios avançados
+Rotinas agendadas (`routes/console.php`): `finance:extend-recurrences --prune` (03:00 UTC),
+`finance:realize-card-charges` (03:05 UTC), `tasks:roll-recurrences` (03:10 UTC).
 
 ## Testes e deploy com segurança
 
-- **Testes**: `php artisan test` só roda contra um MySQL local. O `phpunit.xml` fixa `DB_HOST=127.0.0.1` e o `tests/TestCase.php` recusa qualquer outro host antes do `RefreshDatabase` apagar o banco.
+- **Testes**: só rodam contra MySQL local. O `phpunit.xml` fixa `DB_HOST=127.0.0.1` e o `tests/TestCase.php` recusa qualquer outro host antes do `RefreshDatabase` apagar o banco.
 - **Deploy**: o container roda `php artisan app:release-migrate` em vez de `migrate --force`. Uma migration pendente só é aplicada em produção se estiver listada em `database/release-approved-migrations.txt`.
 - **Release com migration**: (1) faça backup completo de produção e confira a restauração; (2) liste o nome da migration no arquivo de aprovação, no mesmo commit; (3) publique e confira que ela rodou; (4) limpe a lista na release seguinte.
 - **Rotinas diárias**: o agendador (`schedule:work`) roda no mesmo container. Ao subir, o deploy estende as recorrências e confirma as compras de cartão já vencidas.
+
+## Documentação
+
+Todo commit atualiza a documentação afetada (`CLAUDE.md`, este README, `docs/API.md`, `docs/ARCHITECTURE.md`).
+
+## Roadmap
+
+- [ ] Google Calendar sync
+- [ ] Notificações (jobs + queues já configurados)
+- [ ] Decidir se o cadastro público (`POST /auth/register`) continua aberto
