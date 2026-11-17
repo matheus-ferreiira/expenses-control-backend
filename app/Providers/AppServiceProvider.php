@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Domains\Assistant\Models\Conversation;
+use App\Domains\Assistant\Policies\ConversationPolicy;
 use App\Domains\Bookmarks\Models\Bookmark;
 use App\Domains\Bookmarks\Models\BookmarkCollection;
 use App\Domains\Bookmarks\Policies\BookmarkCollectionPolicy;
@@ -63,6 +65,7 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Gate::policy(Conversation::class, ConversationPolicy::class);
         Gate::policy(BookmarkCollection::class, BookmarkCollectionPolicy::class);
         Gate::policy(Bookmark::class, BookmarkPolicy::class);
         Gate::policy(Task::class, TaskPolicy::class);

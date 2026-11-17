@@ -1,5 +1,13 @@
 # CLAUDE.md — Backend (VaultOS, Laravel 12)
 
+## Assistente
+
+`app/Domains/Assistant`: histórico persistido, Responses API e propostas estruturadas, executadas pelos
+serviços de Tasks/Habits/Calendar após aprovação explícita da mensagem salva. Não aceitar ações
+do cliente na aprovação. Preservar isolamento, idempotência, lock por usuário, transação e
+verificação de registros alterados. Configuração: [`docs/ASSISTANT.md`](docs/ASSISTANT.md).
+Testes em `tests/Feature/Assistant/AssistantTest.php` usam MySQL local e OpenAI simulada.
+
 API REST do VaultOS. O frontend fica em `../expenses-control-frontend`.
 
 ## Regra de documentação (obrigatória)

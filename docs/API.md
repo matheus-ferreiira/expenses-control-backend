@@ -1,5 +1,28 @@
 # API Reference
 
+## Assistente — `/api/v1/assistant` (Sanctum)
+
+| Método | Caminho relativo | Resultado |
+|---|---|---|
+| GET | `/status` | `{ configured: boolean }`, sem expor chave |
+| GET | `/conversations?page=1` | `{ items: Conversation[], has_more: boolean }`, 20 por página |
+| POST | `/conversations` | Nova conversa (201) |
+| GET | `/conversations/{id}` | Conversa com `messages` em ordem cronológica |
+| POST | `/conversations/{id}/messages` | `{ message, date: "YYYY-MM-DD", request_id: UUID }` → resposta |
+| POST | `/conversations/{id}/messages/{messageId}/approve` | `{ confirmed: true }` → proposta aplicada |
+| POST | `/conversations/{id}/messages/{messageId}/reject` | Descarta proposta pendente |
+
+Respostas usam o envelope `success/data/message`. Conversa de outro usuário retorna 403;
+mensagem de outra conversa retorna 404. Mensagens têm `id`, `role`, `content`, `actions`, `status`,
+`results`, `expires_at`, `created_at`. Status: `pending`, `applied`, `rejected`, `superseded` ou `null`.
+Cada ação contém `entity` (`task/habit/event`), `operation` (`create/update/delete`), `id`, `data`,
+`before`, `fingerprint`, `timezone`. `results` contém entidade, operação e ID dos registros aplicados.
+
+A aprovação ignora ações extras no corpo e executa somente as salvas. Reaprovação é idempotente.
+Reenviar mensagem com o mesmo `request_id` não chama a OpenAI novamente. 409: proposta indisponível,
+expirada, conflito de registro ou solicitação em andamento; 422: input/plano inválido; 429: limite;
+503: chave ausente; 502/504: falha do provedor. Configuração em [`ASSISTANT.md`](ASSISTANT.md).
+
 Base URL local: `http://localhost:8001/api/v1` · produção: `https://vault-api.matheus-dev.com/api/v1`
 
 > Mantenha este arquivo em dia: todo commit que cria, remove ou muda uma rota ou um campo de resposta

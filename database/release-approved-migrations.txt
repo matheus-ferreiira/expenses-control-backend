@@ -4,3 +4,4 @@
 #   1. Take a full production backup and verify it restores.
 #   2. Add the migration name below in the same commit as the migration.
 #   3. Push; after the deploy, confirm the migration ran and clear this list in the next release.
+2026_11_17_000001_create_assistant_tables

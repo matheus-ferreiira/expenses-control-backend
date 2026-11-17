@@ -1,5 +1,7 @@
 <?php
 
+use App\Domains\Assistant\Controllers\AssistantController;
+use App\Domains\Assistant\Models\Conversation;
 use App\Domains\Auth\Controllers\AuthController;
 use App\Domains\Bookmarks\Controllers\BookmarkCollectionController;
 use App\Domains\Bookmarks\Controllers\BookmarkController;
@@ -34,6 +36,8 @@ use App\Domains\Tasks\Controllers\TaskListController;
 use App\Domains\Tasks\Controllers\TaskTagController;
 use Illuminate\Support\Facades\Route;
 
+Route::model('conversation', Conversation::class);
+
 Route::prefix('v1')->group(function () {
 
     // Google OAuth — no throttle, stateless redirect
@@ -65,6 +69,16 @@ Route::prefix('v1')->group(function () {
 
         // Dashboard
         Route::get('dashboard', [DashboardController::class, 'index']);
+
+        Route::prefix('assistant')->group(function () {
+            Route::get('status', [AssistantController::class, 'status']);
+            Route::get('conversations', [AssistantController::class, 'index']);
+            Route::post('conversations', [AssistantController::class, 'store'])->middleware('throttle:10,1');
+            Route::get('conversations/{conversation}', [AssistantController::class, 'show']);
+            Route::post('conversations/{conversation}/messages', [AssistantController::class, 'send'])->middleware('throttle:10,1');
+            Route::post('conversations/{conversation}/messages/{message}/approve', [AssistantController::class, 'approve'])->middleware('throttle:20,1');
+            Route::post('conversations/{conversation}/messages/{message}/reject', [AssistantController::class, 'reject'])->middleware('throttle:20,1');
+        });
 
         // Tasks
         Route::prefix('tasks')->group(function () {

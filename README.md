@@ -1,5 +1,11 @@
 # VaultOS — Backend API
 
+## Assistente de rotina
+
+Chat GPT com histórico e propostas de criação/edição/exclusão de tarefas, hábitos e eventos,
+aplicadas após aprovação. Configuração da chave, migration, limites e testes:
+[`docs/ASSISTANT.md`](docs/ASSISTANT.md). Rotas autenticadas em `/api/v1/assistant`.
+
 API REST do VaultOS: finanças pessoais (módulo principal), tarefas, hábitos, agenda, notas, bookmarks,
 preços e compras. O frontend fica em [`../expenses-control-frontend`](../expenses-control-frontend/README.md).
 

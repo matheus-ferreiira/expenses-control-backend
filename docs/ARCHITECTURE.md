@@ -1,5 +1,14 @@
 # Backend Architecture Guide
 
+## Domínio Assistant
+
+`AssistantController` verifica o dono da conversa. `AssistantService` monta contexto restrito ao usuário,
+serializa solicitações por lock, mantém histórico e executa aprovações com transação/lock de linha.
+`OpenAiPlanner` usa Responses API com schema estrito e `store: false`; `AssistantActions` valida a
+proposta e reutiliza os serviços Tasks, Habits e Calendar. Gerar texto nunca executa alterações.
+Reenvios/aprovações são idempotentes; revisões substituem propostas e registros alterados externamente
+causam conflito. Modelo de dados, limites e deploy: [`ASSISTANT.md`](ASSISTANT.md).
+
 ## Visão Geral
 
 O backend segue uma arquitetura Domain-Driven Design (DDD) leve, organizada em domínios de negócio independentes. Cada domínio encapsula seus próprios modelos, lógica e interfaces HTTP.

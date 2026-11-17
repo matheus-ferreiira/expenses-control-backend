@@ -1,6 +1,7 @@
 FROM php:8.4-cli
 
 RUN apt-get update && apt-get install -y \
+    ca-certificates \
     libxml2-dev \
     libcurl4-openssl-dev \
     libicu-dev \
