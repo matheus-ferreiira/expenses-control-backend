@@ -395,6 +395,58 @@ centavos; os demais são reais (`decimal`). "Hoje" é sempre o dia no fuso do us
 | Relatórios | `GET reports/monthly` · `reports/yearly` · `reports/cashflow` · `reports/series` · `reports/categories` · `reports/category-transactions` · `reports/balance` |
 | Orçamentos | `GET budgets` · `GET budgets/previous` · `POST budgets` · `PUT\|DELETE budgets/{id}` |
 | Metas | `GET goals` · `POST goals` · `PUT goals/{id}` · `POST goals/{id}/complete` · `DELETE goals/{id}` |
+| Bancos conectados | `GET bank-connections/status` · `GET bank-connections` · `POST bank-connections/connect-token` · `POST bank-connections` · `PATCH\|DELETE bank-connections/{id}` · `POST bank-connections/{id}/sync` · `GET bank-connections/accounts/{id}/transactions` · `PATCH bank-connections/accounts/{id}` · `GET\|POST bank-connections/review` · `POST bank-connections/review/{id}/undo` |
+
+### Bancos conectados (Pluggy / MeuPluggy) 🔒
+
+Cópia do que o banco informa pelo Open Finance, conferida com o livro-caixa: o que falta vai para
+"A lançar" e só entra no app com aprovação. Guia: [`BANK_SYNC.md`](BANK_SYNC.md).
+
+| Método | Caminho | Resultado |
+|---|---|---|
+| GET | `bank-connections/status` | `{ configured, include_sandbox, to_review_count }` (sem expor credenciais; o contador alimenta o card "Do banco" da Visão Geral) |
+| GET | `bank-connections` | `{ connections: BankConnection[], totals: { bank_balance_cents, card_balance_cents, accounts_count, to_review_count } }` (saldos só de contas em BRL) |
+| POST | `bank-connections/connect-token` | `{ connection_id? }` → `{ access_token, update_item_id }`: token de 30 min do widget; com `connection_id`, modo de reautorização. Throttle 10/min |
+| POST | `bank-connections` | `{ item_id: UUID }` (id devolvido pelo widget) → 201 `BankConnection`, já lida. 422 se o item não existe na Pluggy, foi criado para outro usuário ou já é de outro usuário. Repetir o mesmo item relê a conexão. Throttle 10/min |
+| PATCH | `bank-connections/{id}` | `{ name: string\|null }` (máx. 80; vazio/null volta ao nome automático) |
+| POST | `bank-connections/{id}/sync` | Relê na Pluggy e confere as contas ligadas → `BankConnection`. 409 se já está lendo; 502 se a Pluggy falhou. Throttle 10/min |
+| DELETE | `bank-connections/{id}` | 204. Apaga o item na Pluggy e a cópia local (lançamentos do app ficam) |
+| GET | `bank-connections/accounts/{accountId}/transactions?page=&per_page=` | Paginado (50, máx. 100), mais recentes primeiro |
+| PATCH | `bank-connections/accounts/{accountId}` | Liga a conta do banco ao app: `{ bank_account_id }` (conta) ou `{ credit_card_id }` (cartão), `import_from?` (`Y-m-d`; vazio = detectado). `null` desliga. → `BankConnection`. 422 se outra conta do banco já está ligada à mesma conta do app |
+| GET | `bank-connections/review` | "A lançar": `{ items: ReviewItem[], count }`, mais antigas primeiro |
+| POST | `bank-connections/review` | `{ items: Decision[] }` (1–200) → `{ applied, skipped: [{ id, message }], remaining }`. Cada item numa transação; o que não pôde ser lançado volta em `skipped`. 422 só para formato inválido. Throttle 30/min |
+| POST | `bank-connections/review/{bankTransactionId}/undo` | Ignorada → volta para "A lançar"; lançada daqui → apaga o lançamento do app e volta. → transação do banco. 422 para outros status |
+
+`BankConnection`: `id`, `provider`, `name` (nome escolhido → banco pelo código COMPE → conector),
+`custom_name`, `connector { id, name, image_url, color }`, `status` (`UPDATED`, `UPDATING`, `OUTDATED`,
+`LOGIN_ERROR`, `WAITING_USER_INPUT`, `NOT_FOUND`), `execution_status`, `needs_action`,
+`consent_expires_at`, `provider_updated_at`, `last_synced_at`, `last_sync_error`, `created_at` e
+`accounts[]`: `id`, `type` (`bank`/`credit`), `subtype`, `name`, `number`, `currency_code`,
+`balance_cents` (no cartão, fatura em aberto), `credit_limit_cents`, `available_credit_limit_cents`,
+`balance_close_date`, `balance_due_date`, `transactions_count`, `last_transaction_date`,
+`transactions_synced_at`, `link` (`{ bank_account_id, credit_card_id, name, import_from }` ou `null`),
+`to_review_count`.
+
+Transação do banco: `id`, `date`, `description`, `amount_cents` (sempre positivo, em reais),
+`direction` (`in`/`out`; no cartão `out` é compra), `status` (`posted`/`pending`), `category`,
+`installment_number`, `total_installments`, `review_status` (`null`, `before_start`, `new`, `matched`,
+`imported`, `ignored`), `transaction_id` (lançamento do app ligado).
+
+`ReviewItem`: `id`, `date`, `description`, `amount_cents`, `direction`, `status`, `installment_number`,
+`total_installments`, `account { id, type, name, bank_name, ledger_name }` e `suggestion`:
+`action` (`expense`, `income`, `transfer`, `pay_card`, `confirm`, `match`), `description`, `category_id`,
+`is_reimbursement`, `account_id` (outra conta da transferência / conta que pagou a fatura),
+`transaction_id` (previsão ou lançamento existente), `card_id`, `own_share_cents` (despesa dividida) e
+`source` (`forecast`, `rule`, `history`, `pattern` ou `null`).
+
+`Decision`: `id` (transação do banco), `action` (as de cima + `ignore`), `description?` (máx. 255),
+`category_id?` (do mesmo tipo), `account_id?`, `card_id?`, `transaction_id?`, `is_reimbursement?`,
+`own_share_cents?` (despesa dividida: só esta parte é gasto; grava `economic_kind` `shared_expense`),
+`remember?` (padrão `true`: vira regra para a mesma contraparte).
+
+Lançamento criado a partir do banco vem com `recovery_locked: true` em `GET /finance/transactions`
+(valor, data, conta e descrição travados; categoria, tags e notas mudam). Conexão, conta ou transação do
+banco de outro usuário: 403. Sem credenciais da Pluggy: 503.
 
 ### Endpoints da tela Visão Geral
 

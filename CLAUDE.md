@@ -8,6 +8,18 @@ do cliente na aprovação. Preservar isolamento, idempotência, lock por usuári
 verificação de registros alterados. Configuração: [`docs/ASSISTANT.md`](docs/ASSISTANT.md).
 Testes em `tests/Feature/Assistant/AssistantTest.php` usam MySQL local e OpenAI simulada.
 
+## Conexão bancária (Pluggy)
+
+`app/Domains/BankSync`: cópia do que o banco informa via MeuPluggy (Open Finance) em
+`bank_connection_*`, conferida com o livro-caixa por `BankReconciler`. **O livro-caixa só recebe algo
+quando o usuário aprova em "A lançar"**, sempre pelas actions do Finance (nunca insert direto).
+`PLUGGY_CLIENT_ID`/`PLUGGY_CLIENT_SECRET` só no backend; o navegador recebe só connect token de 30 min.
+Registrar um item exige `clientUserId` = usuário na Pluggy. Valor em reais por `amountInAccountCurrency`;
+sinal pelo `amount` (cartão: positivo = compra), não pelo `type`; sandbox tem o cartão invertido.
+Resposta vazia nunca apaga a cópia. Lançamento criado do banco fica travado (`Transaction::isBankLocked`).
+Guia: [`docs/BANK_SYNC.md`](docs/BANK_SYNC.md). Testes: `tests/Feature/Finance/BankConnectionTest.php`
+e `BankReconcileTest.php` (Pluggy simulada com `Http::fake`).
+
 API REST do VaultOS. O frontend fica em `../expenses-control-frontend`.
 
 ## Regra de documentação (obrigatória)
@@ -47,6 +59,7 @@ app/
 ├── Domains/
 │   ├── Auth/        login, register, forgot/reset, perfil, senha, settings, Google OAuth
 │   ├── Finance/     contas, cartões/faturas, transações, categorias, tags, orçamentos, metas, relatórios, recuperação
+│   ├── BankSync/    conexão bancária Pluggy/MeuPluggy (cópia de contas e transações do banco)
 │   ├── Tasks/       tarefas, subtarefas, listas, tags, labels, recorrência
 │   ├── Habits/      hábitos, logs, streaks, heatmap
 │   ├── Calendar/    eventos
@@ -90,8 +103,8 @@ DomainName/
   previsto; `saved`/`reserved` no relatório = transferências líquidas para reservas + aportes em metas.
 - **Conferência de saldo:** `balance-observations` (tabela `account_balance_checkpoints`); a primeira conferência de uma conta sem saldo inicial
   conferido vira a abertura dela. `AccountBalanceHistory` reconstrói saldos por data.
-- **Registros importados** (`import_batch_id`) ficam travados em valor/data/conta/descrição; categoria,
-  tags e notas podem mudar.
+- **Registros importados** (`import_batch_id`) e os **criados a partir do banco** ("A lançar") ficam travados
+  em valor/data/conta/descrição; categoria, tags e notas podem mudar.
 - **Datas "hoje"** sempre pelo fuso do usuário (`UserClock`), nunca `now()` cru.
 - Consultas financeiras não escrevem dados; a manutenção fica nos comandos agendados.
 
@@ -171,6 +184,7 @@ php artisan test --filter=NomeDoTeste        # phpunit.xml: banco productivy_tes
 | `finance:extend-recurrences [--prune]` | Mantém as séries fixas na janela rolante (agendado 03:00 UTC) |
 | `finance:realize-card-charges` | Confirma compras/parcelas/assinaturas do cartão cuja data chegou (03:05 UTC) |
 | `tasks:roll-recurrences` | Materializa a ocorrência de hoje das tarefas recorrentes (03:10 UTC) |
+| `bank-sync:pull` | Relê na Pluggy contas e transações de todos os bancos conectados (09:00 e 21:00 UTC) |
 | `app:release-migrate` | No deploy, roda só as migrations aprovadas |
 | `finance:merge-duplicate-categories [--dry-run]` | Funde categorias duplicadas |
 | `purchases:prune-orphan-items [--dry-run]` | Remove itens de compra órfãos |
@@ -194,7 +208,7 @@ Rotas autenticadas usam `auth:sanctum`. Lista completa em `docs/API.md`.
 |--------|---------|
 | Auth | `/auth` (login, forgot/reset e Google públicos; register fechado por padrão; logout, me, profile, password, settings privados) |
 | Dashboard | `/dashboard` |
-| Finanças | `/finance` (accounts, cards, transactions, categories, tags, reports, budgets, goals, balance) |
+| Finanças | `/finance` (accounts, cards, transactions, categories, tags, reports, budgets, goals, balance, bank-connections) |
 | Tarefas | `/tasks`, `/task-labels`, `/task-lists`, `/task-tags` |
 | Hábitos | `/habits` |
 | Agenda | `/calendar` |

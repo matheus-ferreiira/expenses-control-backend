@@ -3,6 +3,7 @@
 use App\Domains\Assistant\Controllers\AssistantController;
 use App\Domains\Assistant\Models\Conversation;
 use App\Domains\Auth\Controllers\AuthController;
+use App\Domains\BankSync\Controllers\BankConnectionController;
 use App\Domains\Bookmarks\Controllers\BookmarkCollectionController;
 use App\Domains\Bookmarks\Controllers\BookmarkController;
 use App\Domains\Calendar\Controllers\CalendarEventController;
@@ -195,6 +196,24 @@ Route::prefix('v1')->group(function () {
                 Route::put('{goal}', [FinanceGoalController::class, 'update']);
                 Route::post('{goal}/complete', [FinanceGoalController::class, 'complete']);
                 Route::delete('{goal}', [FinanceGoalController::class, 'destroy']);
+            });
+
+            // Conexão bancária (Pluggy / MeuPluggy): espelho do que o banco informa, fora do livro-caixa
+            Route::prefix('bank-connections')->group(function () {
+                Route::get('status', [BankConnectionController::class, 'status']);
+                Route::get('/', [BankConnectionController::class, 'index']);
+                Route::post('connect-token', [BankConnectionController::class, 'connectToken'])->middleware('throttle:10,1');
+                Route::post('/', [BankConnectionController::class, 'store'])->middleware('throttle:10,1');
+                Route::get('accounts/{bankConnectionAccount}/transactions', [BankConnectionController::class, 'transactions']);
+                Route::patch('accounts/{bankConnectionAccount}', [BankConnectionController::class, 'link']);
+                // "A lançar": bank transactions not in the ledger yet; nothing is written without approval
+                Route::get('review', [BankConnectionController::class, 'review']);
+                Route::post('review', [BankConnectionController::class, 'applyReview'])->middleware('throttle:30,1');
+                Route::post('review/{bankConnectionTransaction}/undo', [BankConnectionController::class, 'undoReview']);
+                // The parameter name must match the controller's $bankConnection argument
+                Route::patch('{bankConnection}', [BankConnectionController::class, 'update']);
+                Route::post('{bankConnection}/sync', [BankConnectionController::class, 'sync'])->middleware('throttle:10,1');
+                Route::delete('{bankConnection}', [BankConnectionController::class, 'destroy']);
             });
         });
 

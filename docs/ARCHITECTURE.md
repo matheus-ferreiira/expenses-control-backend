@@ -9,6 +9,19 @@ proposta e reutiliza os serviços Tasks, Habits e Calendar. Gerar texto nunca ex
 Reenvios/aprovações são idempotentes; revisões substituem propostas e registros alterados externamente
 causam conflito. Modelo de dados, limites e deploy: [`ASSISTANT.md`](ASSISTANT.md).
 
+## Domínio BankSync
+
+Conexão bancária pela Pluggy (MeuPluggy / Open Finance). `PluggyClient` é o único ponto que fala com a
+Pluggy (API key em cache, connect token, item, contas, transações por cursor) e transforma falhas em
+`PluggyException` (502/503). `BankSyncService` registra o item devolvido pelo widget só se a Pluggy
+confirmar `clientUserId` = usuário, e espelha contas e transações em `bank_connection_*` com upsert,
+lock por conexão e janela de releitura de 60 dias. `BankReconciler` confere o espelho com o livro-caixa
+(liga o que já existe, põe o resto em "A lançar" com sugestão) e, **só na aprovação do usuário**, escreve
+no Finance pelas mesmas actions do app (`TransactionService`, `ConfirmTransactionAction`,
+`PayCardStatementAction`). Lançamentos criados a partir do banco ficam travados como os importados de
+extrato (`RecoveryRecordGuard`). `BankConnectionController` é fino; policies por `user_id`. Comando
+`bank-sync:pull` (2x por dia). Regras de sinal, datas, comparação e sugestões: [`BANK_SYNC.md`](BANK_SYNC.md).
+
 ## Visão Geral
 
 O backend segue uma arquitetura Domain-Driven Design (DDD) leve, organizada em domínios de negócio independentes. Cada domínio encapsula seus próprios modelos, lógica e interfaces HTTP.
@@ -19,6 +32,7 @@ O backend segue uma arquitetura Domain-Driven Design (DDD) leve, organizada em d
 app/Domains/
 ├── Auth/           Autenticação (e-mail/senha, Google), perfil e preferências
 ├── Finance/        Controle financeiro: contas, cartões/faturas, transações, orçamentos, metas, relatórios
+├── BankSync/       Conexão bancária (Pluggy/MeuPluggy): cópia de contas e transações do banco
 ├── Tasks/          Tarefas, listas, tags, subtarefas, recorrência
 ├── Habits/         Tracking de hábitos
 ├── Calendar/       Eventos e agenda

@@ -29,4 +29,13 @@ return [
         'redirect' => env('GOOGLE_REDIRECT_URI', 'http://localhost'),
     ],
 
+    // Conexão bancária (Open Finance via MeuPluggy). Credenciais só no backend.
+    'pluggy' => [
+        'client_id' => env('PLUGGY_CLIENT_ID'),
+        'client_secret' => env('PLUGGY_CLIENT_SECRET'),
+        'base_url' => env('PLUGGY_BASE_URL', 'https://api.pluggy.ai'),
+        // Mostra os bancos de teste da Pluggy no widget (só para desenvolvimento)
+        'include_sandbox' => (bool) env('PLUGGY_INCLUDE_SANDBOX', false),
+    ],
+
 ];

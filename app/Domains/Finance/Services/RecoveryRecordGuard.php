@@ -27,7 +27,7 @@ final class RecoveryRecordGuard
                     }
                 });
             }
-        })->whereNotNull('import_batch_id')->exists();
+        })->where(fn ($locked) => $locked->whereNotNull('import_batch_id')->orWhereHas('bankImport'))->exists();
         if ($related) {
             throw ValidationException::withMessages(['transaction' => ['Registro importado do extrato: valor, data, conta e descrição ficam travados para o saldo continuar batendo com o banco. Categoria, tags e notas podem ser alteradas.']]);
         }

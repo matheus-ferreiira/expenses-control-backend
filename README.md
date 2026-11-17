@@ -6,6 +6,13 @@ Chat GPT com histórico e propostas de criação/edição/exclusão de tarefas, 
 aplicadas após aprovação. Configuração da chave, migration, limites e testes:
 [`docs/ASSISTANT.md`](docs/ASSISTANT.md). Rotas autenticadas em `/api/v1/assistant`.
 
+## Conexão bancária (Pluggy)
+
+Saldos e transações lidos do banco pelo Open Finance via MeuPluggy, guardados como cópia
+(`bank_connection_*`) e conferidos com o livro-caixa: o que falta vai para "A lançar" e só entra no app
+com aprovação. Credenciais `PLUGGY_CLIENT_ID`/`PLUGGY_CLIENT_SECRET` só no backend. Fluxo, regras e deploy: [`docs/BANK_SYNC.md`](docs/BANK_SYNC.md). Rotas em
+`/api/v1/finance/bank-connections`.
+
 API REST do VaultOS: finanças pessoais (módulo principal), tarefas, hábitos, agenda, notas, bookmarks,
 preços e compras. O frontend fica em [`../expenses-control-frontend`](../expenses-control-frontend/README.md).
 
@@ -46,6 +53,7 @@ API local: `http://localhost:8001/api/v1`. Produção: `https://vault-api.matheu
 app/Domains/
 ├── Auth/       Autenticação (e-mail/senha, Google), perfil, senha, preferências
 ├── Finance/    Contas, cartões e faturas, transações, categorias, tags, orçamentos, metas, relatórios
+├── BankSync/   Conexão bancária (Pluggy/MeuPluggy): cópia de contas e transações do banco
 ├── Tasks/      Tarefas com subtarefas, listas, tags, labels, recorrência
 ├── Habits/     Hábitos com streaks, heatmap, estatísticas
 ├── Calendar/   Agenda
@@ -93,7 +101,7 @@ Erros:
 
 ## Banco de Dados
 
-66 migrations em `database/migrations/`. Convenções: PK UUID, `SoftDeletes` nas entidades principais,
+68 migrations em `database/migrations/`. Convenções: PK UUID, `SoftDeletes` nas entidades principais,
 `decimal(15,2)` para valores em reais e inteiros `*_cents` nas tabelas de cartão/recuperação.
 
 Principais tabelas financeiras: `bank_accounts`, `credit_cards`, `transactions`, `transaction_categories`,
@@ -101,6 +109,8 @@ Principais tabelas financeiras: `bank_accounts`, `credit_cards`, `transactions`,
 `2026_10_13_000001_create_financial_recovery_tables.php` criou `card_statements` (faturas),
 `account_balance_checkpoints` (conferências de saldo), `expense_allocations` (despesas divididas) e as
 tabelas de importação auditada (`import_batches`, `import_sources`, `transaction_sources`, `import_changes`).
+A conexão bancária usa `bank_connections`, `bank_connection_accounts`, `bank_connection_transactions` e
+`bank_review_rules` (escolhas lembradas em "A lançar").
 
 ## Comandos
 
@@ -112,7 +122,8 @@ php artisan tinker                                               # REPL
 ```
 
 Rotinas agendadas (`routes/console.php`): `finance:extend-recurrences --prune` (03:00 UTC),
-`finance:realize-card-charges` (03:05 UTC), `tasks:roll-recurrences` (03:10 UTC).
+`finance:realize-card-charges` (03:05 UTC), `tasks:roll-recurrences` (03:10 UTC),
+`bank-sync:pull` (09:00 e 21:00 UTC: relê os bancos conectados na Pluggy).
 
 ## Testes e deploy com segurança
 

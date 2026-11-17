@@ -19,8 +19,8 @@ final class UpdateTransactionAction
 {
     public function execute(Transaction $transaction, TransactionDTO $dto, string $scope = 'this_only'): Transaction
     {
-        // Imported records keep their cash facts, but can always be classified.
-        if ($transaction->import_batch_id !== null && $this->onlyClassification($transaction, $dto)) {
+        // Imported records (statement file or bank connection) keep their cash facts, but can always be classified.
+        if ($transaction->isBankLocked() && $this->onlyClassification($transaction, $dto)) {
             return DB::transaction(fn () => $this->classify($transaction, $dto));
         }
         RecoveryRecordGuard::editable($transaction, $scope);

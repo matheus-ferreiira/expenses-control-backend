@@ -28,7 +28,8 @@ final class TransactionService
     public function list(User $user, array $filters = []): LengthAwarePaginator
     {
         $query = Transaction::forUser($user->id)
-            ->with(['category', 'account', 'destinationAccount', 'card', 'tags', 'goal']);
+            ->with(['category', 'account', 'destinationAccount', 'card', 'tags', 'goal'])
+            ->withExists('bankImport as bank_imported');
 
         if (! empty($filters['type'])) {
             $query->where('type', $filters['type']);

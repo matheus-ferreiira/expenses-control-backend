@@ -15,3 +15,6 @@ Schedule::command('finance:realize-card-charges')->dailyAt('03:05');
 
 // Rotinas de tarefas — idem: lazy no TaskService::list + redundância agendada.
 Schedule::command('tasks:roll-recurrences')->dailyAt('03:10');
+
+// Bancos conectados (Pluggy): o MeuPluggy atualiza 1x por dia; lemos às 06:00 e 18:00 de Brasília.
+Schedule::command('bank-sync:pull')->twiceDaily(9, 21)->withoutOverlapping();

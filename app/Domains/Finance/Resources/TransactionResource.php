@@ -26,7 +26,8 @@ class TransactionResource extends JsonResource
             'economic_effect' => app(FinancialEffects::class)->economic($this->resource),
             'original_purchase_on' => $this->original_purchase_on,
             'statement_due_on' => $this->statement_due_on,
-            'recovery_locked' => $this->import_batch_id !== null,
+            // Statement import or created from a bank transaction ("A lançar"): cash facts locked
+            'recovery_locked' => $this->import_batch_id !== null || (bool) ($this->bank_imported ?? false),
             'description' => $this->description,
             'notes' => $this->notes,
             'transaction_date' => $this->transaction_date?->toDateString(),

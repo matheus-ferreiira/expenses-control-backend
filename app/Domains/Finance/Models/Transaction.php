@@ -2,6 +2,7 @@
 
 namespace App\Domains\Finance\Models;
 
+use App\Domains\BankSync\Models\BankConnectionTransaction;
 use App\Domains\Finance\Enums\TransactionStatus;
 use App\Domains\Finance\Enums\TransactionType;
 use App\Models\User;
@@ -13,6 +14,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Transaction extends Model
@@ -81,6 +83,18 @@ class Transaction extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(TransactionCategory::class, 'category_id');
+    }
+
+    /** The bank transaction (Pluggy) this record was created from, when it came from "A lançar". */
+    public function bankImport(): HasOne
+    {
+        return $this->hasOne(BankConnectionTransaction::class, 'transaction_id')->where('review_status', BankConnectionTransaction::IMPORTED);
+    }
+
+    /** Cash facts locked: imported from a statement file or created from a bank transaction. */
+    public function isBankLocked(): bool
+    {
+        return $this->import_batch_id !== null || $this->bankImport()->exists();
     }
 
     public function tags(): BelongsToMany
