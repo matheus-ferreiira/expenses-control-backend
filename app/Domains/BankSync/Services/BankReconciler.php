@@ -28,7 +28,9 @@ use Illuminate\Validation\ValidationException;
  * Reconciles what the bank reports with the ledger. Nothing reaches the ledger without the user's approval:
  *  - a bank transaction that is already in the ledger (same side, same value, close date) is only linked (matched);
  *  - the rest, from the account's start date on, waits in "A lançar" (new) with a suggestion;
- *  - approving creates the ledger record through the same actions as the app (or confirms a forecast).
+ *  - approving creates the ledger record through the same actions as the app (or confirms a forecast);
+ *  - linking to a record that already exists gives it the bank's value and date;
+ *  - on a card, the bank says which bill each charge belongs to, and the ledger record follows it.
  */
 class BankReconciler
 {
@@ -165,6 +167,9 @@ class BankReconciler
                 };
                 if ($t->review_status !== $status || $t->transaction_id !== $ledgerId) {
                     $t->forceFill(['review_status' => $status, 'transaction_id' => $ledgerId, 'reviewed_at' => $ledgerId ? now() : null])->save();
+                    if ($ledgerId !== null && $account->isCredit() && $date >= $start) {
+                        $this->followBankBill($t, $ledgerId);
+                    }
                 }
             }
         });
@@ -427,7 +432,7 @@ class BankReconciler
 
         if ($forecast !== null) {
             // A pending forecast is confirmed with the bank's value and date; a record already confirmed
-            // (card subscription realized on its date, bill confirmed in "A confirmar") is only linked
+            // (card subscription realized on its date, bill confirmed in "A confirmar") is linked and corrected
             return ['action' => $forecast->status->value === 'pending' && ! $account->isCredit() ? 'confirm' : 'match', 'transaction_id' => $forecast->id,
                 'description' => $forecast->description, 'category_id' => $forecast->category_id, 'source' => 'forecast'] + $base;
         }
@@ -686,6 +691,11 @@ class BankReconciler
                         throw ValidationException::withMessages(['transaction_id' => 'Este lançamento já foi confirmado.']);
                     }
                     $this->transactions->confirm($ledger, $amount, $date);
+                } else {
+                    $this->alignWithBank($ledger, $b);
+                }
+                if ($account->isCredit()) {
+                    $this->followBankBill($b, $ledger->id);
                 }
                 $this->linkTo($b, $ledger->id, BankTx::MATCHED);
 
@@ -705,6 +715,7 @@ class BankReconciler
                     transactionDate: $date,
                     accountId: $account->isCredit() ? null : $account->bank_account_id,
                     cardId: $account->isCredit() ? $account->credit_card_id : null,
+                    statementMonth: $account->isCredit() ? self::billMonth($b) : null,
                     categoryId: $categoryId,
                     isReimbursement: $type === TransactionType::Income ? (bool) ($item['is_reimbursement'] ?? false) : null,
                 );
@@ -786,6 +797,69 @@ class BankReconciler
     private function linkTo(BankTx $b, string $ledgerId, string $status): void
     {
         $b->forceFill(['review_status' => $status, 'transaction_id' => $ledgerId, 'reviewed_at' => now()])->save();
+    }
+
+    /**
+     * Linking to a record that already exists: the bank's value and date win (a subscription forecast of
+     * 107.57 on the 14th charged as 103.90 on the 6th). A pending record is confirmed with them; a confirmed
+     * one is corrected and its account takes the difference. Transfers and recovered history keep theirs.
+     */
+    private function alignWithBank(Transaction $ledger, BankTx $b): void
+    {
+        if ($ledger->type === TransactionType::Transfer || $ledger->import_batch_id !== null) {
+            return;
+        }
+        $date = $b->date->toDateString();
+        if ($ledger->status->value === 'pending') {
+            $this->transactions->confirm($ledger, $b->amount_cents / 100, $date);
+
+            return;
+        }
+
+        $old = FinancialEffects::cents((string) $ledger->amount);
+        $new = (int) $b->amount_cents;
+        $changes = $ledger->transaction_date->toDateString() !== $date ? ['transaction_date' => $date] : [];
+        if ($old !== $new) {
+            $changes['amount'] = number_format($new / 100, 2, '.', '');
+            // Cents kept for the economic view follow when they carried the whole value
+            foreach (['signed_card_cents', 'economic_expense_cents', 'economic_income_cents'] as $field) {
+                if ($old > 0 && $ledger->{$field} !== null && abs((int) $ledger->{$field}) === $old) {
+                    $changes[$field] = ((int) $ledger->{$field} < 0 ? -1 : 1) * $new;
+                }
+            }
+        }
+        if ($changes === []) {
+            return;
+        }
+        $ledger->forceFill($changes)->save();
+        if (isset($changes['amount']) && $ledger->account_id) {
+            $delta = ($new - $old) / 100;
+            BankAccount::whereKey($ledger->account_id)->increment('balance', $ledger->type === TransactionType::Income ? $delta : -$delta);
+        }
+    }
+
+    /**
+     * On a card, the ledger record of a charge goes to the bill the bank put it in; the app's closing day only
+     * decides when the bank does not say. Payments (transfers) keep the bill they settle; recovered history
+     * is never moved.
+     */
+    private function followBankBill(BankTx $b, string $ledgerId): void
+    {
+        $bill = self::billMonth($b);
+        if ($bill === null) {
+            return;
+        }
+        Transaction::whereKey($ledgerId)->whereNull('import_batch_id')->where('type', '!=', TransactionType::Transfer->value)
+            ->where(fn ($q) => $q->whereNull('statement_month')->orWhere('statement_month', '!=', $bill))
+            ->update(['statement_month' => $bill]);
+    }
+
+    /** The bill ("2026-12", named by its due month) a card charge belongs to, as the bank reports it. */
+    public static function billMonth(BankTx $b): ?string
+    {
+        $bill = data_get($b->payload, 'creditCardMetadata.billForecastDate');
+
+        return is_string($bill) && preg_match('/^(\d{4}-(0[1-9]|1[0-2]))(-\d{2})?$/D', $bill, $m) ? $m[1] : null;
     }
 
     private function remember(User $user, BankTx $b, string $action, Transaction $ledger): void

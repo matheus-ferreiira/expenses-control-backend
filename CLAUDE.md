@@ -17,6 +17,8 @@ quando o usuário aprova em "A lançar"**, sempre pelas actions do Finance (nunc
 Registrar um item exige `clientUserId` = usuário na Pluggy. Valor em reais por `amountInAccountCurrency`;
 sinal pelo `amount` (cartão: positivo = compra), não pelo `type`; sandbox tem o cartão invertido.
 Resposta vazia nunca apaga a cópia. Lançamento criado do banco fica travado (`Transaction::isBankLocked`).
+Ligar a um lançamento existente aplica o valor e a data do banco; no cartão, a fatura (`statement_month`)
+vem do banco (`creditCardMetadata.billForecastDate`), e `closing_day` é o último dia que entra na fatura.
 Guia: [`docs/BANK_SYNC.md`](docs/BANK_SYNC.md). Testes: `tests/Feature/Finance/BankConnectionTest.php`
 e `BankReconcileTest.php` (Pluggy simulada com `Http::fake`).
 

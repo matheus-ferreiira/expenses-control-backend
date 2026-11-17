@@ -18,7 +18,8 @@ confirmar `clientUserId` = usuário, e espelha contas e transações em `bank_co
 lock por conexão e janela de releitura de 60 dias. `BankReconciler` confere o espelho com o livro-caixa
 (liga o que já existe, põe o resto em "A lançar" com sugestão) e, **só na aprovação do usuário**, escreve
 no Finance pelas mesmas actions do app (`TransactionService`, `ConfirmTransactionAction`,
-`PayCardStatementAction`). Lançamentos criados a partir do banco ficam travados como os importados de
+`PayCardStatementAction`); ao ligar a um lançamento existente, o valor e a data do banco prevalecem, e no
+cartão cada compra fica na fatura que o banco informa. Lançamentos criados a partir do banco ficam travados como os importados de
 extrato (`RecoveryRecordGuard`). `BankConnectionController` é fino; policies por `user_id`. Comando
 `bank-sync:pull` (2x por dia). Regras de sinal, datas, comparação e sugestões: [`BANK_SYNC.md`](BANK_SYNC.md).
 
@@ -289,7 +290,7 @@ ao cartão e ao mês da fatura) sai da conta.
 |---|---|
 | `TransactionService` + Actions | Criar, editar, confirmar e excluir transações (séries fixas, parcelas, escopo `this_only` / `this_and_future` / `all`) |
 | `RecurrenceSchedule` + `ExtendRecurringTransactionsAction` | Janela rolante das séries fixas (comando `finance:extend-recurrences`) |
-| `CardCycle` | Ciclo da fatura (fechamento/vencimento) de uma data |
+| `CardCycle` | Ciclo da fatura (fechamento/vencimento) de uma data; `closing_day` é o último dia que entra na fatura. Lançamento com `statement_month` (ex.: fatura informada pelo banco) não depende dele |
 | `CardOverview` | Fatura a pagar, fatura aberta, próximas faturas e limite disponível real |
 | `CardStatementSummary` + `PayCardStatementAction` | Detalhe e pagamento de fatura (`card_statements`) |
 | `RealizeDueCardChargesAction` | Confirma compras do cartão na data delas (comando `finance:realize-card-charges`) |

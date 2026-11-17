@@ -53,11 +53,17 @@ class BankReconcileTest extends TestCase
 
     private function bankTx(BankConnectionAccount $account, string $date, float $amount, string $direction, string $description, array $extra = []): BankTx
     {
-        return BankTx::create([
+        return BankTx::create($extra + [
             'bank_connection_account_id' => $account->id, 'user_id' => $account->user_id,
             'external_transaction_id' => (string) Str::uuid(), 'date' => $date, 'description' => $description,
             'amount_cents' => (int) round($amount * 100), 'direction' => $direction, 'status' => 'posted', 'payload' => [],
-        ] + $extra);
+        ]);
+    }
+
+    /** Pluggy's card metadata naming the bill (due month) a charge went to. */
+    private static function bill(string $month): array
+    {
+        return ['creditCardMetadata' => ['billForecastDate' => $month]];
     }
 
     private function ledger(array $attributes): Transaction
@@ -186,6 +192,9 @@ class BankReconcileTest extends TestCase
         $this->assertSame(['match', $internet->id, 'Internet'], [$suggestion['action'], $suggestion['transaction_id'], $suggestion['description']]);
         $this->review([['id' => $paid->id, 'action' => 'match', 'transaction_id' => $internet->id]])->assertOk()->assertJsonPath('data.applied', 1);
         $this->assertSame(10, Transaction::count());
+        // The bank's value and date win; the account takes the 5.16 difference
+        $this->assertSame(['135.06', '2026-11-16'], [$internet->fresh()->amount, $internet->fresh()->transaction_date->toDateString()]);
+        $this->assertSame('494.84', $this->nubank->fresh()->balance);
     }
 
     public function test_money_from_oneself_is_a_transfer_between_accounts(): void
@@ -216,8 +225,11 @@ class BankReconcileTest extends TestCase
             $this->ledger(['card_id' => $card->id, 'type' => 'expense', 'amount' => 10, 'description' => 'Café', 'transaction_date' => "2026-10-{$day}"]);
             $this->bankTx($cardAccount, "2026-10-{$day}", 10, 'out', 'Cafe');
         }
-        $bankInstallment = $this->bankTx($cardAccount, '2026-11-13', 161.12, 'out', 'Mercadolivre*Mercadol 2/3', ['installment_number' => 2, 'total_installments' => 3]);
-        $newPurchase = $this->bankTx($cardAccount, '2026-11-04', 30.01, 'out', 'Mercadolivre*Sosondas 1/5', ['installment_number' => 1, 'total_installments' => 5]);
+        // The bank tells the bill of each charge: installment 2/3 already went to December's
+        $bankInstallment = $this->bankTx($cardAccount, '2026-11-13', 161.12, 'out', 'Mercadolivre*Mercadol 2/3', ['installment_number' => 2, 'total_installments' => 3, 'payload' => self::bill('2026-12')]);
+        $newPurchase = $this->bankTx($cardAccount, '2026-11-04', 30.01, 'out', 'Mercadolivre*Sosondas 1/5', ['installment_number' => 1, 'total_installments' => 5, 'payload' => self::bill('2026-11')]);
+        $spotify = $this->ledger(['card_id' => $card->id, 'type' => 'expense', 'amount' => 23.90, 'description' => 'Spotify', 'transaction_date' => '2026-11-12']);
+        $bankSpotify = $this->bankTx($cardAccount, '2026-11-12', 23.90, 'out', 'Dl*Spotify P4921', ['payload' => self::bill('2026-12')]);
         $received = $this->bankTx($cardAccount, '2026-11-15', 1407.22, 'in', 'Pagamento recebido');
         $paid = $this->bankTx($this->checking, '2026-11-15', 1407.22, 'out', 'Pagamento de fatura');
 
@@ -225,6 +237,9 @@ class BankReconcileTest extends TestCase
         $this->link($cardAccount, ['credit_card_id' => $card->id])->assertOk();
 
         $this->assertSame([BankTx::MATCHED, $installment->id], [$bankInstallment->fresh()->review_status, $bankInstallment->fresh()->transaction_id]);
+        // Matched charges follow the bank's bill, not the app's closing day (12/11 would be November's)
+        $this->assertSame([BankTx::MATCHED, '2026-12'], [$bankSpotify->fresh()->review_status, $spotify->fresh()->statement_month]);
+        $this->assertSame('2026-12', $installment->fresh()->statement_month);
         $items = collect($this->getJson('/api/v1/finance/bank-connections/review')->json('data.items'))->keyBy('id');
         $this->assertSame(['pay_card', $card->id], [$items[$paid->id]['suggestion']['action'], $items[$paid->id]['suggestion']['card_id']]);
         $this->assertSame('pay_card', $items[$received->id]['suggestion']['action']);
@@ -244,7 +259,9 @@ class BankReconcileTest extends TestCase
         $this->assertSame(1, Transaction::where('economic_kind', 'card_payment')->count());
 
         $purchase = Transaction::find($newPurchase->fresh()->transaction_id);
-        $this->assertSame(['Sonda (1/5)', $card->id, null, '30.01'], [$purchase->description, $purchase->card_id, $purchase->account_id, $purchase->amount]);
+        $this->assertSame(['Sonda (1/5)', $card->id, null, '30.01', '2026-11'], [$purchase->description, $purchase->card_id, $purchase->account_id, $purchase->amount, $purchase->statement_month]);
+        // The payment keeps the bill it settles
+        $this->assertSame('2026-11', $payment->fresh()->statement_month);
     }
 
     public function test_a_card_subscription_already_in_the_app_is_linked_not_duplicated(): void
@@ -254,7 +271,9 @@ class BankReconcileTest extends TestCase
         // The series occurrence (with IOF) realized on the 14th; the bank charged on the 6th, IOF apart
         $series = $this->ledger(['card_id' => $card->id, 'type' => 'expense', 'amount' => 107.57, 'description' => 'OpenAI (ChatGPT) + IOF',
             'transaction_date' => '2026-11-14', 'is_recurring' => true, 'recurrence_group_id' => (string) Str::uuid()]);
-        $charge = $this->bankTx($cardAccount, '2026-11-06', 103.90, 'out', 'Openai *Chatgpt Subscr');
+        $charge = $this->bankTx($cardAccount, '2026-11-06', 103.90, 'out', 'Openai *Chatgpt Subscr', ['payload' => self::bill('2026-11')]);
+        $next = $this->ledger(['card_id' => $card->id, 'type' => 'expense', 'amount' => 107.57, 'description' => 'OpenAI (ChatGPT) + IOF', 'status' => 'pending',
+            'transaction_date' => '2026-12-14', 'is_recurring' => true, 'recurrence_group_id' => $series->recurrence_group_id]);
         $this->link($cardAccount, ['credit_card_id' => $card->id, 'import_from' => '2026-11-01'])->assertOk();
 
         $suggestion = $this->getJson('/api/v1/finance/bank-connections/review')->json('data.items.0.suggestion');
@@ -262,7 +281,24 @@ class BankReconcileTest extends TestCase
 
         $this->review([['id' => $charge->id, 'action' => 'match', 'transaction_id' => $series->id]])->assertOk()->assertJsonPath('data.applied', 1);
         $this->assertSame([BankTx::MATCHED, $series->id], [$charge->fresh()->review_status, $charge->fresh()->transaction_id]);
-        $this->assertSame(1, Transaction::count());
+        $this->assertSame(2, Transaction::count());
+        // It takes what the bank charged, on the day and in the bill the bank says; the next forecast is untouched
+        $this->assertSame(['103.90', '2026-11-06', '2026-11'], [$series->fresh()->amount, $series->fresh()->transaction_date->toDateString(), $series->fresh()->statement_month]);
+        $this->assertSame(['107.57', 'pending', null], [$next->fresh()->amount, $next->fresh()->status->value, $next->fresh()->statement_month]);
+    }
+
+    public function test_linking_a_card_forecast_that_has_not_realized_yet_confirms_it_with_the_bank(): void
+    {
+        $card = CreditCard::factory()->create(['user_id' => $this->user->id, 'bank_account_id' => $this->nubank->id, 'closing_day' => 11, 'due_day' => 20]);
+        $cardAccount = BankConnectionAccount::factory()->create(['bank_connection_id' => $this->connection->id, 'type' => 'CREDIT', 'subtype' => 'CREDIT_CARD']);
+        $installment = $this->ledger(['card_id' => $card->id, 'type' => 'expense', 'amount' => 173.40, 'description' => 'Nova Era - Parcela 3/4', 'status' => 'pending',
+            'transaction_date' => '2026-12-07', 'is_recurring' => true, 'recurrence_group_id' => (string) Str::uuid()]);
+        $charge = $this->bankTx($cardAccount, '2026-11-13', 173.40, 'out', 'Nova Era', ['payload' => self::bill('2026-12')]);
+        $this->link($cardAccount, ['credit_card_id' => $card->id, 'import_from' => '2026-11-01'])->assertOk();
+
+        $this->review([['id' => $charge->id, 'action' => 'match', 'transaction_id' => $installment->id]])->assertOk()->assertJsonPath('data.applied', 1);
+        $this->assertSame(['confirmed', '2026-11-13', '2026-12'], [$installment->fresh()->status->value, $installment->fresh()->transaction_date->toDateString(), $installment->fresh()->statement_month]);
+        $this->assertSame('500.00', $this->nubank->fresh()->balance);
     }
 
     public function test_records_created_from_the_bank_are_locked_and_can_be_undone_from_review(): void

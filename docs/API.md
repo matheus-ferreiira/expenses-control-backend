@@ -436,7 +436,8 @@ Transação do banco: `id`, `date`, `description`, `amount_cents` (sempre positi
 `total_installments`, `account { id, type, name, bank_name, ledger_name }` e `suggestion`:
 `action` (`expense`, `income`, `transfer`, `pay_card`, `confirm`, `match`), `description`, `category_id`,
 `is_reimbursement`, `account_id` (outra conta da transferência / conta que pagou a fatura),
-`transaction_id` (previsão ou lançamento existente), `card_id`, `own_share_cents` (despesa dividida) e
+`transaction_id` (previsão ou lançamento existente; `confirm`/`match` dão a ele o valor e a data do banco e, no
+cartão, a fatura informada pelo banco), `card_id`, `own_share_cents` (despesa dividida) e
 `source` (`forecast`, `rule`, `history`, `pattern` ou `null`).
 
 `Decision`: `id` (transação do banco), `action` (as de cima + `ignore`), `description?` (máx. 255),

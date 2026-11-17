@@ -5,7 +5,7 @@ Open Finance, usando a [Pluggy](https://docs.pluggy.ai). O VaultOS guarda uma **
 informa** (`bank_connection_*`) e a confere com o livro-caixa:
 
 - cada conta do banco é **ligada** a uma conta do app (cartão → cartão);
-- o que já está no app é só ligado (`matched`);
+- o que já está no app é ligado (`matched`); no cartão, cada compra fica na fatura que o banco informa;
 - o que falta vai para **"A lançar"** (`/finance/connections/review`) com uma sugestão, e **só entra no
   livro-caixa quando o usuário aprova**, pelas mesmas actions do app (criar, confirmar previsão, pagar
   fatura).
@@ -45,9 +45,8 @@ novo como duplicata do primeiro e recusa (`400 ITEM_USER_ALREADY_EXISTS`, "Um er
 widget). Sem credenciais, `GET /finance/bank-connections/status` responde `configured: false`
 e a tela mostra "Conexão bancária desativada". Depois de mudar o `.env`, rode `artisan config:clear`.
 
-Produção: aplicar a migration `2026_11_17_000002_create_bank_connection_tables` exige o procedimento
-de release (backup verificado + listar em `database/release-approved-migrations.txt`) e as duas
-variáveis no Railway.
+Produção: a migration `2026_11_17_000002_create_bank_connection_tables` rodou em 2026-11-17 (procedimento
+de release com backup verificado); as duas variáveis ficam no Railway.
 
 ## Dados
 
@@ -124,6 +123,14 @@ nunca casa sozinha. No cartão, linhas `pending` são cobranças agendadas e cas
 
 Lançamento apagado no app libera a transação do banco de volta para "A lançar".
 
+**Fatura do cartão.** O banco diz em que fatura cada cobrança caiu (`payload.creditCardMetadata.billForecastDate`,
+"2026-12" = fatura que vence em dezembro; vem também nas já fechadas). O lançamento do cartão ligado ao banco
+a partir do início, ou criado em "A lançar", grava essa fatura em `statement_month`
+(`BankReconciler::billMonth`). O dia de fechamento do cartão no app só decide quando o banco não diz
+(previsões, compras digitadas). No app, `closing_day` é o **último dia que entra** na fatura: o Nubank
+que "fecha dia 12" (compra do dia 12 já vai para a próxima) fica com `closing_day` 11. Pagamentos da
+fatura (transferências) mantêm a fatura que pagam e o histórico importado (`import_batch_id`) não muda.
+
 **Início (`import_from`).** Detectado na ligação: depois do último trecho de 5 dias com movimento em
 que tudo bate, o primeiro dia com algo faltando; tudo batendo, o dia seguinte ao último movimento; sem
 trecho que bata, o primeiro dia do mês. O usuário pode escolher outra data.
@@ -131,7 +138,7 @@ trecho que bata, o primeiro dia do mês. O usuário pode escolher outra data.
 **Sugestões** (calculadas na leitura de "A lançar", em ordem):
 1. **Previsão**: lançamento da mesma conta/cartão, mesmo tipo, a até 10 dias, valor a até 15% (40% para
    boleto "Pagamento efetuado", contas de consumo). Pendente → `confirm` (confirma com valor e data do
-   banco); série já confirmada ou assinatura do cartão já realizada e não ligada → `match` (só liga). Uma
+   banco); série já confirmada ou assinatura do cartão já realizada e não ligada → `match` (liga e corrige). Uma
    contraparte já conhecida por outra categoria não recebe previsão. Pares mais próximos primeiro.
 2. **Fatura**: "Pagamento de fatura" (conta) / "Pagamento recebido" (cartão) → `pay_card`, com a
    fatura cujo vencimento é o mais próximo; o outro lado é reconhecido sem pagar duas vezes.
@@ -146,7 +153,11 @@ trecho que bata, o primeiro dia do mês. O usuário pode escolher outra data.
 `expense`/`income` criam pelo `TransactionService` (conta ou cartão; parcela vira "Nome (n/N)"; receita
 pode ser reembolso; despesa pode ser **dividida** com `own_share_cents`, gravando `economic_kind`
 `shared_expense` e só a parte própria como gasto); `transfer` cria transferência com a outra conta;
-`pay_card` usa `PayCardStatementAction`; `confirm` confirma a previsão; `match` só liga; `ignore`.
+`pay_card` usa `PayCardStatementAction`; `confirm` confirma a previsão; `match` liga a um lançamento que
+já existe e dá a ele o valor e a data do banco (pendente é confirmado; confirmado é corrigido e a conta recebe
+a diferença; transferência e histórico importado não mudam); `ignore`. No cartão, `expense`/`income` e
+`match` usam a fatura que o banco informa. Ex.: a previsão "OpenAI (ChatGPT) + IOF" de 107,57 no dia 14,
+ligada à cobrança de 103,90 do dia 6, vira 103,90 no dia 6, na fatura do banco (o IOF vem à parte).
 Transferência e pagamento de fatura primeiro tentam casar com o que o outro lado já criou. A escolha vira
 regra (`remember`, padrão sim). No fim, a conferência roda em todas as contas ligadas do usuário.
 
@@ -173,6 +184,6 @@ banco (R$ 447,96).
 connect token, registro com checagem de `clientUserId`, sinais, moeda e datas, paginação, janela de
 releitura, autorização expirada, falha da Pluggy, renomear/desconectar, isolamento e o comando agendado.
 `tests/Feature/Finance/BankReconcileTest.php` cobre ligação e início, histórico e regras, previsões
-(pendente e já confirmada), transferência entre contas, cartão (parcelas, assinatura, fatura dos dois
-lados), despesa dividida, mesma quantia de duas pessoas e Pix com dois almoços, trava e desfazer,
+(pendente e já confirmada, com valor e data do banco), transferência entre contas, cartão (parcelas,
+assinatura, fatura informada pelo banco, pagamento dos dois lados), despesa dividida, mesma quantia de duas pessoas e Pix com dois almoços, trava e desfazer,
 ignorar, validação e isolamento. As rotas que recebem um registro estão no `FinanceRoutesAccessTest`.
