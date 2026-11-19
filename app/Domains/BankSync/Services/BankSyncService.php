@@ -29,6 +29,9 @@ class BankSyncService
     /** Item statuses whose data can be read. LOGIN_ERROR etc. may answer empty lists: never mirror those. */
     private const READABLE = ['UPDATED', 'OUTDATED'];
 
+    /** Safety net of the hourly check: a connection is read in full at least this often. */
+    public const FULL_READ_HOURS = 24;
+
     public function __construct(
         private readonly PluggyClient $pluggy,
         private readonly BankReconciler $reconciler,
@@ -93,6 +96,32 @@ class BankSyncService
     }
 
     /** Reads the item, its accounts and their transactions again from Pluggy. */
+    /**
+     * Scheduled check (hourly). Pluggy only changes an item when it reads the bank again (MeuPluggy: once a
+     * day), so one cheap call asks for the item and accounts/transactions are read only when Pluggy read the
+     * bank since the last read here. A connection that failed, changed status or was not read in
+     * FULL_READ_HOURS is read anyway.
+     *
+     * @return bool whether accounts and transactions were read
+     */
+    public function pullIfUpdated(BankConnection $connection): bool
+    {
+        $item = $this->pluggy->item($connection->external_item_id);
+        $updatedAt = $this->timestamp($item['lastUpdatedAt'] ?? null);
+        $unchanged = $item !== null
+            && $connection->last_sync_error === null
+            && $connection->status === ($item['status'] ?? null)
+            && $connection->last_synced_at?->gt(now()->subHours(self::FULL_READ_HOURS))
+            // Stored to the second; Pluggy sends milliseconds
+            && $updatedAt !== null && $connection->provider_updated_at?->timestamp === $updatedAt->timestamp;
+        if ($unchanged) {
+            return false;
+        }
+        $this->sync($connection, $item);
+
+        return true;
+    }
+
     public function sync(BankConnection $connection, ?array $item = null): BankConnection
     {
         $lock = Cache::lock('bank-sync:'.$connection->id, 300);

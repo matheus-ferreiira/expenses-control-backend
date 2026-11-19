@@ -186,7 +186,7 @@ php artisan test --filter=NomeDoTeste        # phpunit.xml: banco productivy_tes
 | `finance:extend-recurrences [--prune]` | Mantém as séries fixas na janela rolante (agendado 03:00 UTC) |
 | `finance:realize-card-charges` | Confirma compras/parcelas/assinaturas do cartão cuja data chegou (03:05 UTC) |
 | `tasks:roll-recurrences` | Materializa a ocorrência de hoje das tarefas recorrentes (03:10 UTC) |
-| `bank-sync:pull` | Relê na Pluggy contas e transações de todos os bancos conectados (09:00 e 21:00 UTC) |
+| `bank-sync:pull` | De hora em hora: pergunta à Pluggy se ela leu cada banco de novo e, se leu (ou se passaram 24 h), relê contas e transações |
 | `app:release-migrate` | No deploy, roda só as migrations aprovadas |
 | `finance:merge-duplicate-categories [--dry-run]` | Funde categorias duplicadas |
 | `purchases:prune-orphan-items [--dry-run]` | Remove itens de compra órfãos |

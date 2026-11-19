@@ -84,9 +84,12 @@ conferência das contas ligadas. Um lock por conexão evita duas leituras simult
 - Item que a Pluggy não conhece mais vira `NOT_FOUND` (pede nova conexão), sem apagar a cópia.
 - Falha na Pluggy: 502, a mensagem fica em `last_sync_error` e os dados anteriores continuam.
 
-O MeuPluggy atualiza cada banco **uma vez por dia** e o item do VaultOS não pode forçar atualização.
-O comando `bank-sync:pull` relê todas as conexões às 09:00 e 21:00 UTC (06:00 e 18:00 de Brasília);
-"Buscar dados agora" na tela relê uma conexão. O que for novo e não estiver no app aparece em "A lançar"
+O MeuPluggy atualiza cada banco **uma vez por dia**, cerca de 24 h depois da leitura anterior (o horário
+vai se deslocando), e o item do VaultOS não pode forçar atualização. O comando `bank-sync:pull` roda **de
+hora em hora** (`BankSyncService::pullIfUpdated`): pede só o item à Pluggy (uma chamada) e relê contas e
+transações apenas se `lastUpdatedAt` mudou desde a última leitura. Relê também se a última leitura falhou,
+se o status mudou ou se passaram 24 h (`FULL_READ_HOURS`). Assim, o que o banco informou aparece até uma
+hora depois da leitura do MeuPluggy. "Buscar dados agora" na tela sempre relê a conexão inteira. O que for novo e não estiver no app aparece em "A lançar"
 (contador na Visão Geral, card "Do banco").
 
 **Autorização.** No MeuPluggy ela vale 1 ano (`consent_expires_at`; a tela avisa 30 dias antes). Para

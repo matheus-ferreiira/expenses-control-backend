@@ -21,7 +21,7 @@ no Finance pelas mesmas actions do app (`TransactionService`, `ConfirmTransactio
 `PayCardStatementAction`); ao ligar a um lançamento existente, o valor e a data do banco prevalecem, e no
 cartão cada compra fica na fatura que o banco informa. Lançamentos criados a partir do banco ficam travados como os importados de
 extrato (`RecoveryRecordGuard`). `BankConnectionController` é fino; policies por `user_id`. Comando
-`bank-sync:pull` (2x por dia). Regras de sinal, datas, comparação e sugestões: [`BANK_SYNC.md`](BANK_SYNC.md).
+`bank-sync:pull` (de hora em hora; relê contas e transações só quando a Pluggy leu o banco de novo). Regras de sinal, datas, comparação e sugestões: [`BANK_SYNC.md`](BANK_SYNC.md).
 
 ## Visão Geral
 

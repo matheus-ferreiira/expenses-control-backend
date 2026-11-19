@@ -123,7 +123,7 @@ php artisan tinker                                               # REPL
 
 Rotinas agendadas (`routes/console.php`): `finance:extend-recurrences --prune` (03:00 UTC),
 `finance:realize-card-charges` (03:05 UTC), `tasks:roll-recurrences` (03:10 UTC),
-`bank-sync:pull` (09:00 e 21:00 UTC: relê os bancos conectados na Pluggy).
+`bank-sync:pull` (de hora em hora: relê na Pluggy os bancos que ela leu de novo).
 
 ## Testes e deploy com segurança
 

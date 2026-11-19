@@ -4,6 +4,7 @@ namespace Tests\Feature\Finance;
 
 use App\Domains\BankSync\Models\BankConnection;
 use App\Domains\BankSync\Models\BankConnectionAccount;
+use App\Domains\BankSync\Services\BankSyncService;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Factory;
@@ -323,12 +324,34 @@ class BankConnectionTest extends TestCase
         $this->getJson("/api/v1/finance/bank-connections/accounts/{$account->id}/transactions")->assertForbidden();
     }
 
-    public function test_the_scheduled_pull_reads_every_connection(): void
+    public function test_the_hourly_pull_reads_a_bank_again_only_when_pluggy_has_read_it(): void
     {
         $this->connect()->assertCreated();
         $this->accounts[0]['balance'] = 10;
+        $reads = fn () => collect(Http::recorded())->filter(fn ($pair) => parse_url($pair[0]->url(), PHP_URL_PATH) === '/accounts')->count();
+        $balance = fn () => BankConnectionAccount::where('external_account_id', self::CHECKING)->sole()->balance_cents;
+        $read = $reads();
 
+        // Pluggy has not read the bank since: only the item is asked, nothing else
+        $this->travel(1)->hours();
+        $this->artisan('bank-sync:pull')->expectsOutputToContain('sem novidade na Pluggy: 1')->assertSuccessful();
+        $this->assertSame([$read, 152347], [$reads(), $balance()]);
+
+        // Pluggy read the bank again (milliseconds included): accounts and transactions are read
+        $this->item['lastUpdatedAt'] = '2026-11-17T16:41:26.319Z';
+        $this->travel(1)->hours();
+        $this->artisan('bank-sync:pull')->expectsOutputToContain('Conexões relidas: 1')->assertSuccessful();
+        $this->assertSame([$read + 1, 1000], [$reads(), $balance()]);
+        $this->travel(1)->hours();
         $this->artisan('bank-sync:pull')->assertSuccessful();
-        $this->assertSame(1000, BankConnectionAccount::where('external_account_id', self::CHECKING)->sole()->balance_cents);
+        $this->assertSame($read + 1, $reads());
+
+        // A failed read is retried, and a connection is read in full at least once a day
+        BankConnection::query()->update(['last_sync_error' => 'Pluggy indisponível']);
+        $this->artisan('bank-sync:pull')->assertSuccessful();
+        $this->assertSame([$read + 2, null], [$reads(), BankConnection::sole()->last_sync_error]);
+        $this->travel(BankSyncService::FULL_READ_HOURS + 1)->hours();
+        $this->artisan('bank-sync:pull')->assertSuccessful();
+        $this->assertSame($read + 3, $reads());
     }
 }
